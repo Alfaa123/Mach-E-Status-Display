@@ -18,21 +18,37 @@
  * Seeeduino XIAO dev board    : CS:  3, DC:  2, RST:  1, BL:  0, SCK:  8, MOSI: 10, MISO:  9
  * Teensy 4.1 dev board        : CS: 39, DC: 41, RST: 40, BL: 22, SCK: 13, MOSI: 11, MISO: 12
  ******************************************************************************/
+#include <lvgl.h>
+
 #include <Arduino_GFX_Library.h>
 #include "TCA9554.h"
 #include <ESP32-TWAI-CAN.hpp>
+#include "ui.h"
+
+#include <string.h>
+#include "vars.h"
+
+#include "screenVariables.h"
+
+
 
 #define CAN_TX		6
 #define CAN_RX		0
 
 CanFrame rxFrame;
 
-
+uint32_t screenWidth;
+uint32_t screenHeight;
+uint32_t bufSize;
+lv_display_t *disp;
+lv_color_t *disp_draw_buf;
 
 TCA9534 TCA(0x20);
 #define GFX_BL 1
 
 void sendObdFrame(uint8_t obdId);
+
+
 
 //HWCDC USBSerial;
 Arduino_DataBus *bus = new Arduino_SWSPI(
@@ -47,11 +63,29 @@ Arduino_ESP32RGBPanel *rgbpanel = new Arduino_ESP32RGBPanel(
     1 /* hsync_polarity */, 10 /* hsync_front_porch */, 8 /* hsync_pulse_width */, 50 /* hsync_back_porch */,
     1 /* vsync_polarity */, 10 /* vsync_front_porch */, 8 /* vsync_pulse_width */, 20 /* vsync_back_porch */);
 Arduino_RGB_Display *gfx = new Arduino_RGB_Display(
-    480 /* width */, 480 /* height */, rgbpanel, 1 /* rotation */, true /* auto_flush */,
+    480 /* width */, 480 /* height */, rgbpanel, 0 /* rotation */, true /* auto_flush */,
     bus, GFX_NOT_DEFINED /* RST */, st7701_type1_init_operations, sizeof(st7701_type1_init_operations));
 /*******************************************************************************
  * End of Arduino_GFX setting
  ******************************************************************************/
+
+void my_disp_flush(lv_display_t *disp, const lv_area_t *area, uint8_t *px_map)
+{
+  //uint32_t w = lv_area_get_width(area);
+  //uint32_t h = lv_area_get_height(area);
+
+  //gfx->draw16bitRGBBitmap(area->x1, area->y1, (uint16_t *)px_map, w, h);
+  gfx->draw16bitRGBBitmap(0, 0, (uint16_t *)px_map, 480, 480);
+  /*Call it to tell LVGL you are ready*/
+  lv_disp_flush_ready(disp);
+}
+
+void my_print(lv_log_level_t level, const char *buf)
+{
+  LV_UNUSED(level);
+  Serial.println(buf);
+  Serial.flush();
+}
 
 void setup(void)
 {
@@ -85,30 +119,51 @@ Wire.setClock(50000);
     Serial.println("LCD Failed!");
   }
   gfx->fillScreen(RGB565_BLACK);
-TCA.pinMode1(6, OUTPUT);
+
 #ifdef GFX_BL
   TCA.pinMode1(GFX_BL, OUTPUT);
   TCA.write1(GFX_BL, HIGH);
 #endif
 
-  gfx->setCursor(10, 10);
-  gfx->setTextColor(RGB565_RED);
-  gfx->println("Hello World!");
+lv_init();
+lv_tick_set_cb(millis);
+Serial.println("LVGL Started");
 
-  delay(2000); // 5 seconds
+
+
+//lv_log_register_print_cb(my_print);
+
+screenWidth = gfx->width();
+screenHeight = gfx->height();
+
+bufSize = screenWidth * screenHeight;
+
+disp_draw_buf = (lv_color_t *)gfx->getFramebuffer();
+
+if (!disp_draw_buf)
+{
+  Serial.println("LVGL disp_draw_buf allocate failed!");
 }
+else
+{
+disp = lv_display_create(screenWidth, screenHeight);
+lv_display_set_buffers(disp, disp_draw_buf, NULL, bufSize * 2, LV_DISPLAY_RENDER_MODE_DIRECT);
+lv_display_set_flush_cb(disp, my_disp_flush);
+}
+ui_init();
+Serial.println("UI Started");
+//lv_obj_t *label = lv_label_create(lv_scr_act());
+// lv_label_set_text(label, "Hello Arduino, I'm LVGL!(V" GFX_STR(LVGL_VERSION_MAJOR) "." GFX_STR(LVGL_VERSION_MINOR) "." GFX_STR(LVGL_VERSION_PATCH) ")");
+//lv_obj_align(label, LV_ALIGN_CENTER, 0, 0);
 
+}
 void loop()
 {
-    static uint32_t lastStamp    = 0;
-    uint32_t        currentStamp = millis();
+  lv_timer_handler();
+  ui_tick();
+  
 
-    if(currentStamp - lastStamp > 1000) { // sends OBD2 request every second
-        lastStamp = currentStamp;
-        sendObdFrame(5); // For coolant temperature
-    }
-
-if(ESP32Can.readFrame(rxFrame, 1000)) {
+/*if(ESP32Can.readFrame(rxFrame, 1000)) {
 
         Serial.printf("Received frame: %03X  \r\n", rxFrame.identifier);
         if(rxFrame.identifier == 0x7E8) {            
@@ -116,7 +171,7 @@ if(ESP32Can.readFrame(rxFrame, 1000)) {
             gfx->print("Coolanty Temp: ");
             gfx->println(rxFrame.data[3] - 40);                    
 }
-}}
+}*/}
 
 void sendObdFrame(uint8_t obdId) {
     CanFrame obdFrame         = {0};
