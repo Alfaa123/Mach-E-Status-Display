@@ -197,18 +197,6 @@
               "children": [
                 {
                   "type": "tab",
-                  "id": "#45d7eafe-a362-4c7c-9cfd-4d3307b81ff1",
-                  "name": "Settings",
-                  "component": "editor",
-                  "config": {
-                    "objectPath": "[Mach-E-Status-Display.eez-project]:/settings",
-                    "subObjectPath": "[Mach-E-Status-Display.eez-project]:/settings",
-                    "permanent": false
-                  },
-                  "icon": "material:settings"
-                },
-                {
-                  "type": "tab",
                   "id": "#540712c6-8665-4120-ad94-e3d79300b563",
                   "name": "Main",
                   "component": "editor",
@@ -218,8 +206,7 @@
                   },
                   "icon": "svg:page"
                 }
-              ],
-              "active": true
+              ]
             },
             {
               "type": "row",
@@ -239,7 +226,8 @@
                       "enableClose": false,
                       "icon": "svg:properties"
                     }
-                  ]
+                  ],
+                  "active": true
                 },
                 {
                   "type": "tabset",

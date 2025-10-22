@@ -37,6 +37,8 @@
 
 CanFrame rxFrame;
 
+TaskHandle_t PeriodicRequestsHandle;
+
 uint32_t screenWidth;
 uint32_t screenHeight;
 uint32_t bufSize;
@@ -87,10 +89,46 @@ void my_print(lv_log_level_t level, const char *buf)
   Serial.flush();
 }
 
+void PeriodicRequests( void * pvParameters){
+  Serial.print("Periodic CAN requests started on core ");
+  Serial.println(xPortGetCoreID());
+
+  while(1==1){
+    static unsigned long lastTime = 0;
+    if (millis() > lastTime + 1000){
+      lastTime = millis();
+      sendObdFrame(0);
+      Serial.println("Sent CAN Request");
+    }
+
+
+    if(ESP32Can.readFrame(rxFrame, 1000)) {
+        Serial.printf("Received frame: %03X  \r\n", rxFrame.identifier);
+        if(rxFrame.identifier == 0x7E8) {            
+            Serial.print("Data: ");
+            Serial.print(rxFrame.data[3]);
+            Serial.println(rxFrame.data[4]);                     
+}
+}
+  }
+}
+
 void setup(void)
 {
 delay(2000);
 Serial.begin(115200);
+Serial.print("Setup started on core ");
+Serial.println(xPortGetCoreID());
+
+xTaskCreatePinnedToCore(
+                    PeriodicRequests,   /* Task function. */
+                    "PeriodicRequests",     /* name of task. */
+                    10000,       /* Stack size of task */
+                    NULL,        /* parameter of the task */
+                    1,           /* priority of the task */
+                    &PeriodicRequestsHandle,      /* Task handle to keep track of created task */
+                    0);          /* pin task to core 0 */     
+
 if(ESP32Can.begin(ESP32Can.convertSpeed(500), CAN_TX, CAN_RX, 10, 10)) {
   Serial.println("CAN bus started!");
 } else {
@@ -163,25 +201,17 @@ void loop()
   ui_tick();
   
 
-/*if(ESP32Can.readFrame(rxFrame, 1000)) {
-
-        Serial.printf("Received frame: %03X  \r\n", rxFrame.identifier);
-        if(rxFrame.identifier == 0x7E8) {            
-            gfx->setCursor(10, 30);
-            gfx->print("Coolanty Temp: ");
-            gfx->println(rxFrame.data[3] - 40);                    
 }
-}*/}
 
 void sendObdFrame(uint8_t obdId) {
     CanFrame obdFrame         = {0};
-    obdFrame.identifier       = 0x7DF; // Default OBD2 address;
+    obdFrame.identifier       = 0x7E0; // Default OBD2 address;
     obdFrame.extd             = 0;
     obdFrame.data_length_code = 8;
-    obdFrame.data[0]          = 2;
-    obdFrame.data[1]          = 1;
-    obdFrame.data[2]          = obdId;
-    obdFrame.data[3]          = 0xAA; // Best use 0xAA (0b10101010) instead of 0
+    obdFrame.data[0]          = 3;
+    obdFrame.data[1]          = 0x22;
+    obdFrame.data[2]          = 0x39;
+    obdFrame.data[3]          = 0x87; // Best use 0xAA (0b10101010) instead of 0
     obdFrame.data[4]          = 0xAA; // TWAI / CAN works better this way, as it
     obdFrame.data[5]          = 0xAA; // needs to avoid bit-stuffing
     obdFrame.data[6]          = 0xAA;
