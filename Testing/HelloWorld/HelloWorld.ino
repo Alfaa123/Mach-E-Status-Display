@@ -98,7 +98,7 @@ void PeriodicRequests( void * pvParameters){
     if (millis() > lastTime + 1000){
       lastTime = millis();
       sendObdFrame(0);
-      Serial.println("Sent CAN Request");
+      //Serial.println("Sent CAN Request");
     }
 
 
@@ -106,8 +106,21 @@ void PeriodicRequests( void * pvParameters){
         Serial.printf("Received frame: %03X  \r\n", rxFrame.identifier);
         if(rxFrame.identifier == 0x7E8) {            
             Serial.print("Data: ");
-            Serial.print(rxFrame.data[3]);
-            Serial.println(rxFrame.data[4]);                     
+            Serial.print(rxFrame.data[0], HEX);
+            Serial.print(" ");
+            Serial.print(rxFrame.data[1], HEX);
+                        Serial.print(" ");
+            Serial.print(rxFrame.data[2], HEX);
+                        Serial.print(" ");
+            Serial.print(rxFrame.data[3], HEX);
+                        Serial.print(" ");
+            Serial.print(rxFrame.data[4], HEX);
+                        Serial.print(" ");
+            Serial.print(rxFrame.data[5], HEX);
+                        Serial.print(" ");
+            Serial.print(rxFrame.data[6], HEX);
+                        Serial.print(" ");
+            Serial.println(rxFrame.data[7], HEX);                     
 }
 }
   }
