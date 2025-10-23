@@ -1,2 +1,13 @@
-FROM: 7E8
-Data: 03 7F 22 31 CC CC CC CC
+Received frame: 59E
+Negative Response Recieved From 59E: SID: FF NRC: FF
+Data: 9E 7F FF FF FF FF FF FF
+Received frame: 59E
+Negative Response Recieved From 59E: SID: FF NRC: FF
+Data: 9E 7F FF FF FF FF FF FF
+Received frame: 7EC
+Negative Response Recieved From 7EC: SID: F4 NRC: 5B
+Data: 4 7F F4 5B 8B 0 0 0
+Received frame: 59E
+Negative Response Recieved From 59E: SID: FF NRC: FF
+Data: 9E 7F FF FF FF FF FF FF
+Received frame: 7EC

@@ -103,16 +103,19 @@ void PeriodicRequests( void * pvParameters){
 
 
     if(ESP32Can.readFrame(rxFrame, 1000)) {
-        Serial.printf("Received frame: %03X  \r\n", rxFrame.identifier);
-        if(rxFrame.data[1] = 0x7F){
-          Serial.print("Negative Response Recieved From ");
-          Serial.print(rxFrame.identifier);
-          Serial.print(": SID: ");
-          Serial.print(rxFrame.data[2]);
-          Serial.print(" NRC: ");
-          Serial.println(rxFrame.data[3]);
+
         }
-        if(rxFrame.identifier == 0x7E8) {            
+        if(rxFrame.identifier == 0x7EC) {    
+                  Serial.printf("Received frame: %03X  \r\n", rxFrame.identifier);
+if(rxFrame.data[1] = 0x7F){
+          Serial.print("Negative Response Recieved From ");
+          Serial.print(rxFrame.identifier, HEX);
+          Serial.print(": SID: ");
+          Serial.print(rxFrame.data[2], HEX);
+          Serial.print(" NRC: ");
+          Serial.println(rxFrame.data[3], HEX);
+
+
             Serial.print("Data: ");
             Serial.print(rxFrame.data[0], HEX);
             Serial.print(" ");
@@ -226,13 +229,13 @@ void loop()
 
 void sendObdFrame(uint8_t obdId) {
     CanFrame obdFrame         = {0};
-    obdFrame.identifier       = 0x7E0; // Default OBD2 address;
+    obdFrame.identifier       = 0x700; // Default OBD2 address;
     obdFrame.extd             = 0;
     obdFrame.data_length_code = 8;
     obdFrame.data[0]          = 0x03;
     obdFrame.data[1]          = 0x22;
-    obdFrame.data[2]          = 0x39;
-    obdFrame.data[3]          = 0x87; // Best use 0xAA (0b10101010) instead of 0
+    obdFrame.data[2]          = 0x48;
+    obdFrame.data[3]          = 0x00; // Best use 0xAA (0b10101010) instead of 0
     obdFrame.data[4]          = 0xAA; // TWAI / CAN works better this way, as it
     obdFrame.data[5]          = 0xAA; // needs to avoid bit-stuffing
     obdFrame.data[6]          = 0xAA;
