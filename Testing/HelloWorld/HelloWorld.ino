@@ -29,11 +29,12 @@
 #include "vars.h"
 
 #include "screenVariables.h"
+#include "pids.hpp"
 
 
 
-#define CAN_TX		6
-#define CAN_RX		0
+#define CAN_TX 6
+#define CAN_RX 0
 
 CanFrame rxFrame;
 
@@ -54,25 +55,24 @@ void sendObdFrame(uint16_t CANId);
 
 //HWCDC USBSerial;
 Arduino_DataBus *bus = new Arduino_SWSPI(
-    GFX_NOT_DEFINED /* DC */, 42 /* CS */,
-    2 /* SCK */, 1 /* MOSI */, GFX_NOT_DEFINED /* MISO */);
+  GFX_NOT_DEFINED /* DC */, 42 /* CS */,
+  2 /* SCK */, 1 /* MOSI */, GFX_NOT_DEFINED /* MISO */);
 
 Arduino_ESP32RGBPanel *rgbpanel = new Arduino_ESP32RGBPanel(
-    40 /* DE */, 39 /* VSYNC */, 38 /* HSYNC */, 41 /* PCLK */,
-    46 /* R0 */, 3 /* R1 */, 8 /* R2 */, 18 /* R3 */, 17 /* R4 */,
-    14 /* G0 */, 13 /* G1 */, 12 /* G2 */, 11 /* G3 */, 10 /* G4 */, 9 /* G5 */,
-    5 /* B0 */, 45 /* B1 */, 48 /* B2 */, 47 /* B3 */, 21 /* B4 */,
-    1 /* hsync_polarity */, 10 /* hsync_front_porch */, 8 /* hsync_pulse_width */, 50 /* hsync_back_porch */,
-    1 /* vsync_polarity */, 10 /* vsync_front_porch */, 8 /* vsync_pulse_width */, 20 /* vsync_back_porch */);
+  40 /* DE */, 39 /* VSYNC */, 38 /* HSYNC */, 41 /* PCLK */,
+  46 /* R0 */, 3 /* R1 */, 8 /* R2 */, 18 /* R3 */, 17 /* R4 */,
+  14 /* G0 */, 13 /* G1 */, 12 /* G2 */, 11 /* G3 */, 10 /* G4 */, 9 /* G5 */,
+  5 /* B0 */, 45 /* B1 */, 48 /* B2 */, 47 /* B3 */, 21 /* B4 */,
+  1 /* hsync_polarity */, 10 /* hsync_front_porch */, 8 /* hsync_pulse_width */, 50 /* hsync_back_porch */,
+  1 /* vsync_polarity */, 10 /* vsync_front_porch */, 8 /* vsync_pulse_width */, 20 /* vsync_back_porch */);
 Arduino_RGB_Display *gfx = new Arduino_RGB_Display(
-    480 /* width */, 480 /* height */, rgbpanel, 0 /* rotation */, true /* auto_flush */,
-    bus, GFX_NOT_DEFINED /* RST */, st7701_type1_init_operations, sizeof(st7701_type1_init_operations));
+  480 /* width */, 480 /* height */, rgbpanel, 0 /* rotation */, true /* auto_flush */,
+  bus, GFX_NOT_DEFINED /* RST */, st7701_type1_init_operations, sizeof(st7701_type1_init_operations));
 /*******************************************************************************
  * End of Arduino_GFX setting
  ******************************************************************************/
 
-void my_disp_flush(lv_display_t *disp, const lv_area_t *area, uint8_t *px_map)
-{
+void my_disp_flush(lv_display_t *disp, const lv_area_t *area, uint8_t *px_map) {
   //uint32_t w = lv_area_get_width(area);
   //uint32_t h = lv_area_get_height(area);
 
@@ -82,97 +82,66 @@ void my_disp_flush(lv_display_t *disp, const lv_area_t *area, uint8_t *px_map)
   lv_disp_flush_ready(disp);
 }
 
-void my_print(lv_log_level_t level, const char *buf)
-{
+void my_print(lv_log_level_t level, const char *buf) {
   LV_UNUSED(level);
   Serial.println(buf);
   Serial.flush();
 }
 
-void PeriodicRequests( void * pvParameters){
+void PeriodicRequests(void *pvParameters) {
   Serial.print("Periodic CAN requests started on core ");
   Serial.println(xPortGetCoreID());
 
-  while(1==1){
+  while (1 == 1) {
     static unsigned long lastTime = 0;
-    if (millis() > lastTime + 100){
+    if (millis() > lastTime + 100) {
       lastTime = millis();
       sendObdFrame(0x7DF);
     }
 
-
-    if(ESP32Can.readFrame(rxFrame, 1000)) {
-
+    if (ESP32Can.readFrame(rxFrame, 1000)) {
+      if (rxFrame.identifier != 0x59E) {
+        if (rxFrame.identifier == 0x7E7) {
+          if (rxFrame.data[1] == 0x22 + 0x40) {
+            printDebugInfo(rxFrame);
+            updateBatteryLevel(rxFrame);
+          }
         }
-        if(rxFrame.identifier != 0x59E) {
-          //if(1==1) {    
-        //Serial.printf("Received frame: %03X  \r\n", rxFrame.identifier);
-if(rxFrame.data[1] = 0x22 + 0x40)
-//if(1==1)
-{
-          //Serial.print("Response Recieved From ");
-          //Serial.println(rxFrame.identifier, HEX);
-
-
-            //Serial.print("Data: ");
-            //Serial.print(rxFrame.data[0], HEX);
-            //Serial.print(" ");
-            //Serial.print(rxFrame.data[1], HEX);
-            //           Serial.print(" ");
-            //Serial.print(rxFrame.data[2], HEX);
-            //            Serial.print(" ");
-            //Serial.print(rxFrame.data[3], HEX);
-            //            Serial.print(" ");
-            //Serial.print(rxFrame.data[4], HEX);
-            //            Serial.print(" ");
-            //Serial.print(rxFrame.data[5], HEX);
-            //            Serial.print(" ");
-            //Serial.print(rxFrame.data[6], HEX);
-            //            Serial.print(" ");
-            //Serial.println(rxFrame.data[7], HEX);
-            float batLevel = (rxFrame.data[4] *256+rxFrame.data[5])*0.002;
-            set_var_battery_level_float(batLevel);
-            char buffer[7];
-            sprintf(buffer,"%.2f%%",batLevel);
-            set_var_battery_level(buffer);
-            Serial.print("Battery Level: ");
-            Serial.println((rxFrame.data[4] *256+rxFrame.data[5])*0.002);                     
-}
-}
+      }
+    }
   }
 }
 
-void setup(void)
-{
-delay(2000);
-Serial.begin(115200);
-Serial.print("Setup started on core ");
-Serial.println(xPortGetCoreID());
+void setup(void) {
+  delay(2000);
+  Serial.begin(115200);
+  Serial.print("Setup started on core ");
+  Serial.println(xPortGetCoreID());
 
-xTaskCreatePinnedToCore(
-                    PeriodicRequests,   /* Task function. */
-                    "PeriodicRequests",     /* name of task. */
-                    10000,       /* Stack size of task */
-                    NULL,        /* parameter of the task */
-                    10,           /* priority of the task */
-                    &PeriodicRequestsHandle,      /* Task handle to keep track of created task */
-                    0);          /* pin task to core 0 */     
+  xTaskCreatePinnedToCore(
+    PeriodicRequests,        /* Task function. */
+    "PeriodicRequests",      /* name of task. */
+    10000,                   /* Stack size of task */
+    NULL,                    /* parameter of the task */
+    10,                      /* priority of the task */
+    &PeriodicRequestsHandle, /* Task handle to keep track of created task */
+    0);                      /* pin task to core 0 */
 
-if(ESP32Can.begin(ESP32Can.convertSpeed(500), CAN_TX, CAN_RX, 10, 10)) {
-  Serial.println("CAN bus started!");
-} else {
-  Serial.println("CAN bus failed!");
-}
+  if (ESP32Can.begin(ESP32Can.convertSpeed(500), CAN_TX, CAN_RX, 10, 10)) {
+    Serial.println("CAN bus started!");
+  } else {
+    Serial.println("CAN bus failed!");
+  }
 
-if(Wire.begin(15,7)){
-  Serial.println("I2C Bus Started!");
-} else {
-  Serial.println("I2C Bus Failed!");
-}
+  if (Wire.begin(15, 7)) {
+    Serial.println("I2C Bus Started!");
+  } else {
+    Serial.println("I2C Bus Failed!");
+  }
 
-TCA.begin();
+  TCA.begin();
 
-Wire.setClock(50000);
+  Wire.setClock(50000);
 
 #ifdef DEV_DEVICE_INIT
   DEV_DEVICE_INIT();
@@ -180,9 +149,9 @@ Wire.setClock(50000);
 
 
   // Init Display
-  if (gfx->begin()){
+  if (gfx->begin()) {
     Serial.println("LCD Started!");
-  } else{
+  } else {
     Serial.println("LCD Failed!");
   }
   gfx->fillScreen(RGB565_BLACK);
@@ -192,61 +161,54 @@ Wire.setClock(50000);
   TCA.write1(GFX_BL, HIGH);
 #endif
 
-lv_init();
-lv_tick_set_cb(millis);
-Serial.println("LVGL Started");
+  lv_init();
+  lv_tick_set_cb(millis);
+  Serial.println("LVGL Started");
 
 
 
-//lv_log_register_print_cb(my_print);
+  //lv_log_register_print_cb(my_print);
 
-screenWidth = gfx->width();
-screenHeight = gfx->height();
+  screenWidth = gfx->width();
+  screenHeight = gfx->height();
 
-bufSize = screenWidth * screenHeight;
+  bufSize = screenWidth * screenHeight;
 
-disp_draw_buf = (lv_color_t *)gfx->getFramebuffer();
+  disp_draw_buf = (lv_color_t *)gfx->getFramebuffer();
 
-if (!disp_draw_buf)
-{
-  Serial.println("LVGL disp_draw_buf allocate failed!");
+  if (!disp_draw_buf) {
+    Serial.println("LVGL disp_draw_buf allocate failed!");
+  } else {
+    disp = lv_display_create(screenWidth, screenHeight);
+    lv_display_set_buffers(disp, disp_draw_buf, NULL, bufSize * 2, LV_DISPLAY_RENDER_MODE_DIRECT);
+    lv_display_set_flush_cb(disp, my_disp_flush);
+  }
+  ui_init();
+  Serial.println("UI Started");
+  //lv_obj_t *label = lv_label_create(lv_scr_act());
+  // lv_label_set_text(label, "Hello Arduino, I'm LVGL!(V" GFX_STR(LVGL_VERSION_MAJOR) "." GFX_STR(LVGL_VERSION_MINOR) "." GFX_STR(LVGL_VERSION_PATCH) ")");
+  //lv_obj_align(label, LV_ALIGN_CENTER, 0, 0);
 }
-else
-{
-disp = lv_display_create(screenWidth, screenHeight);
-lv_display_set_buffers(disp, disp_draw_buf, NULL, bufSize * 2, LV_DISPLAY_RENDER_MODE_DIRECT);
-lv_display_set_flush_cb(disp, my_disp_flush);
-}
-ui_init();
-Serial.println("UI Started");
-//lv_obj_t *label = lv_label_create(lv_scr_act());
-// lv_label_set_text(label, "Hello Arduino, I'm LVGL!(V" GFX_STR(LVGL_VERSION_MAJOR) "." GFX_STR(LVGL_VERSION_MINOR) "." GFX_STR(LVGL_VERSION_PATCH) ")");
-//lv_obj_align(label, LV_ALIGN_CENTER, 0, 0);
-
-}
-void loop()
-{
+void loop() {
   lv_timer_handler();
   ui_tick();
-  
-
 }
 
 void sendObdFrame(uint16_t CANId) {
-    Serial.print("Request Sent To: ");
-    Serial.println(CANId, HEX);
-    CanFrame obdFrame         = {0};
-    obdFrame.identifier       = CANId; // Default OBD2 address;
-    obdFrame.extd             = 0;
-    obdFrame.data_length_code = 8;
-    obdFrame.data[0]          = 0x03;
-    obdFrame.data[1]          = 0x22;
-    obdFrame.data[2]          = 0x48;
-    obdFrame.data[3]          = 0x01; // Best use 0xAA (0b10101010) instead of 0
-    obdFrame.data[4]          = 0xAA; // TWAI / CAN works better this way, as it
-    obdFrame.data[5]          = 0xAA; // needs to avoid bit-stuffing
-    obdFrame.data[6]          = 0xAA;
-    obdFrame.data[7]          = 0xAA;
-    // Accepts both pointers and references
-    ESP32Can.writeFrame(obdFrame); // timeout defaults to 1 ms
+  Serial.print("Request Sent To: ");
+  Serial.println(CANId, HEX);
+  CanFrame obdFrame = { 0 };
+  obdFrame.identifier = CANId;  // Default OBD2 address;
+  obdFrame.extd = 0;
+  obdFrame.data_length_code = 8;
+  obdFrame.data[0] = 0x03;
+  obdFrame.data[1] = 0x22;
+  obdFrame.data[2] = 0x48;
+  obdFrame.data[3] = 0x01;  // Best use 0xAA (0b10101010) instead of 0
+  obdFrame.data[4] = 0xAA;  // TWAI / CAN works better this way, as it
+  obdFrame.data[5] = 0xAA;  // needs to avoid bit-stuffing
+  obdFrame.data[6] = 0xAA;
+  obdFrame.data[7] = 0xAA;
+  // Accepts both pointers and references
+  ESP32Can.writeFrame(obdFrame);  // timeout defaults to 1 ms
 }
