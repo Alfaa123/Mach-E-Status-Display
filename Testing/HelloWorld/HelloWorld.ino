@@ -94,23 +94,33 @@ void PeriodicRequests(void *pvParameters) {
 
   while (1 == 1) {
     static unsigned long lastTime = 0;
-    if (millis() > lastTime + 100) {
+    if (millis() > lastTime + 10000) {
       lastTime = millis();
-      sendObdFrame(0x7DF);
+      sendUDSRequest(0x7E4, 0x4801);
     }
 
     if (ESP32Can.readFrame(rxFrame, 1000)) {
       if (rxFrame.identifier != 0x59E) {
-        if (rxFrame.identifier == 0x7E7) {
-          if (rxFrame.data[1] == 0x22 + 0x40) {
-            printDebugInfo(rxFrame);
-            updateBatteryLevel(rxFrame);
+        if (rxFrame.data[1]== 0x7F){
+          Serial.println("Negative Response:");
+          printDebugInfo(rxFrame);
+          Serial.println();
+        }
+        //Serial.print("Response from: ");
+        //Serial.println(rxFrame.identifier, HEX);
+        if (rxFrame.data[1] == 0x22 + 0x40) {
+          if (rxFrame.identifier == 0x7EC) {
+            if (rxFrame.data[2] == 0x48 && rxFrame.data[3] == 0x01) {
+              printDebugInfo(rxFrame);
+              updateBatteryLevel(rxFrame);
+            }
           }
         }
       }
     }
   }
 }
+
 
 void setup(void) {
   delay(2000);
@@ -194,18 +204,45 @@ void loop() {
   ui_tick();
 }
 
-void sendObdFrame(uint16_t CANId) {
-  Serial.print("Request Sent To: ");
-  Serial.println(CANId, HEX);
+void sendUDSRequest(uint16_t CANId, uint16_t PID)  {
+  Serial.print("UDS Request Sent To: 0x");
+  Serial.print(CANId, HEX);
+  Serial.print(" For PID: 0x");
+  Serial.println(PID, HEX);
   CanFrame obdFrame = { 0 };
+  uint8_t lower = PID & 0xff;
+  uint8_t upper = (PID >> 8) & 0xff; 
   obdFrame.identifier = CANId;  // Default OBD2 address;
   obdFrame.extd = 0;
   obdFrame.data_length_code = 8;
   obdFrame.data[0] = 0x03;
   obdFrame.data[1] = 0x22;
-  obdFrame.data[2] = 0x48;
-  obdFrame.data[3] = 0x01;  // Best use 0xAA (0b10101010) instead of 0
+  obdFrame.data[2] = upper;
+  obdFrame.data[3] = lower;  // Best use 0xAA (0b10101010) instead of 0
   obdFrame.data[4] = 0xAA;  // TWAI / CAN works better this way, as it
+  obdFrame.data[5] = 0xAA;  // needs to avoid bit-stuffing
+  obdFrame.data[6] = 0xAA;
+  obdFrame.data[7] = 0xAA;
+  // Accepts both pointers and references
+  ESP32Can.writeFrame(obdFrame);  // timeout defaults to 1 ms
+}
+
+void sendUDSMultiRequest(uint16_t CANId, uint16_t PID)  {
+  Serial.print("UDS Request Sent To: 0x");
+  Serial.print(CANId, HEX);
+  Serial.print(" For PID: 0x");
+  Serial.println(PID, HEX);
+  CanFrame obdFrame = { 0 };
+  uint8_t lower = PID & 0xff;
+  uint8_t upper = (PID >> 8) & 0xff; 
+  obdFrame.identifier = CANId;  // Default OBD2 address;
+  obdFrame.extd = 0;
+  obdFrame.data_length_code = 8;
+  obdFrame.data[0] = 0x04;
+  obdFrame.data[1] = 0x2A;
+  obdFrame.data[2] = 0x03;
+  obdFrame.data[3] = upper;  // Best use 0xAA (0b10101010) instead of 0
+  obdFrame.data[4] = lower;  // TWAI / CAN works better this way, as it
   obdFrame.data[5] = 0xAA;  // needs to avoid bit-stuffing
   obdFrame.data[6] = 0xAA;
   obdFrame.data[7] = 0xAA;
