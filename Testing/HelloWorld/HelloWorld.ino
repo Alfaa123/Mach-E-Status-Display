@@ -39,6 +39,7 @@
 CanFrame rxFrame;
 
 TaskHandle_t PeriodicRequestsHandle;
+TaskHandle_t DisplayLoopHandle;
 
 uint32_t screenWidth;
 uint32_t screenHeight;
@@ -88,6 +89,11 @@ void my_print(lv_log_level_t level, const char *buf) {
   Serial.flush();
 }
 
+void DisplayLoop(void *pvParameters){
+  lv_timer_handler();
+  ui_tick();
+}
+
 void PeriodicRequests(void *pvParameters) {
   Serial.print("Periodic CAN requests started on core ");
   Serial.println(xPortGetCoreID());
@@ -96,7 +102,12 @@ void PeriodicRequests(void *pvParameters) {
     static unsigned long lastTime = 0;
     if (millis() > lastTime + 10000) {
       lastTime = millis();
+      //Battery SoC
       sendUDSRequest(0x7E4, 0x4801);
+      //Primary Motor Torque
+      sendUDSRequest(0x7E6, 0x481c);
+      //Secondary Motor Torque
+      sendUDSRequest(0x7E7, 0x481a);
     }
 
     if (ESP32Can.readFrame(rxFrame, 1000)) {
@@ -109,6 +120,16 @@ void PeriodicRequests(void *pvParameters) {
         //Serial.print("Response from: ");
         //Serial.println(rxFrame.identifier, HEX);
         if (rxFrame.data[1] == 0x22 + 0x40) {
+          if (rxFrame.identifier == 0x7EE){
+            if (rxFrame.data[2] == 0x48 && rxFrame.data[3] == 0x1C){
+              printDebugInfo(rxFrame);
+            }
+          }
+          if (rxFrame.identifier ==0x7EF){
+            if (rxFrame.data[2] == 0x48 && rxFrame.data[3] == 0x1a){
+              printDebugInfo(rxFrame);
+            }
+          }
           if (rxFrame.identifier == 0x7EC) {
             if (rxFrame.data[2] == 0x48 && rxFrame.data[3] == 0x01) {
               printDebugInfo(rxFrame);
@@ -195,14 +216,16 @@ void setup(void) {
   }
   ui_init();
   Serial.println("UI Started");
-  //lv_obj_t *label = lv_label_create(lv_scr_act());
-  // lv_label_set_text(label, "Hello Arduino, I'm LVGL!(V" GFX_STR(LVGL_VERSION_MAJOR) "." GFX_STR(LVGL_VERSION_MINOR) "." GFX_STR(LVGL_VERSION_PATCH) ")");
-  //lv_obj_align(label, LV_ALIGN_CENTER, 0, 0);
+    xTaskCreatePinnedToCore(
+    DisplayLoop,        /* Task function. */
+    "DisplayLoop",      /* name of task. */
+    10000,                   /* Stack size of task */
+    NULL,                    /* parameter of the task */
+    2,                      /* priority of the task */
+    &DisplayLoopHandle,     /* Task handle to keep track of created task */
+    1);                      /* pin task to core 0 */
 }
-void loop() {
-  lv_timer_handler();
-  ui_tick();
-}
+void loop() {}
 
 void sendUDSRequest(uint16_t CANId, uint16_t PID)  {
   Serial.print("UDS Request Sent To: 0x");

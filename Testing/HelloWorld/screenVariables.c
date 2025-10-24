@@ -1,12 +1,37 @@
 #include "vars.h"
 #include <string.h>
 
-char fl_wheelspeed[5] = { 0 };
-char fr_wheelspeed[5] = { 0 };
-char rl_wheelspeed[5] = { 0 };
-char rr_wheelspeed[5] = { 0 };
 char battery_level[7] = { 0 };
 float battery_level_float;
+float torque_split;
+char primary_motor_torque[7] = { 0 };
+char secondary_motor_torque[7] = { 0 };
+
+const char *get_var_secondary_motor_torque() {
+    return secondary_motor_torque;
+}
+
+void set_var_secondary_motor_torque(const char *value) {
+    strncpy(secondary_motor_torque, value, sizeof(secondary_motor_torque) / sizeof(char));
+    secondary_motor_torque[sizeof(secondary_motor_torque) / sizeof(char) - 1] = 0;
+}
+
+const char *get_var_primary_motor_torque() {
+    return primary_motor_torque;
+}
+
+void set_var_primary_motor_torque(const char *value) {
+    strncpy(primary_motor_torque, value, sizeof(primary_motor_torque) / sizeof(char));
+    primary_motor_torque[sizeof(primary_motor_torque) / sizeof(char) - 1] = 0;
+}
+
+float get_var_torque_split() {
+    return torque_split;
+}
+
+void set_var_torque_split(float value) {
+    torque_split = value;
+}
 
 float get_var_battery_level_float() {
     return battery_level_float;
@@ -23,42 +48,4 @@ const char *get_var_battery_level() {
 void set_var_battery_level(const char *value) {
     strncpy(battery_level, value, sizeof(battery_level) / sizeof(char));
     battery_level[sizeof(battery_level) / sizeof(char) - 1] = 0;
-}
-
-const char *get_var_fl_wheelspeed() {
-    return fl_wheelspeed;
-}
-
-void set_var_fl_wheelspeed(const char *value) {
-    strncpy(fl_wheelspeed, value, sizeof(fl_wheelspeed) / sizeof(char));
-    fl_wheelspeed[sizeof(fl_wheelspeed) / sizeof(char) - 1] = 0;
-}
-
-
-const char *get_var_fr_wheelspeed() {
-    return fr_wheelspeed;
-}
-
-void set_var_fr_wheelspeed(const char *value) {
-    strncpy(fr_wheelspeed, value, sizeof(fr_wheelspeed) / sizeof(char));
-    fr_wheelspeed[sizeof(fr_wheelspeed) / sizeof(char) - 1] = 0;
-}
-
-const char *get_var_rl_wheelspeed() {
-    return rl_wheelspeed;
-}
-
-void set_var_rl_wheelspeed(const char *value) {
-    strncpy(rl_wheelspeed, value, sizeof(rl_wheelspeed) / sizeof(char));
-    rl_wheelspeed[sizeof(rl_wheelspeed) / sizeof(char) - 1] = 0;
-}
-
-
-const char *get_var_rr_wheelspeed() {
-    return rr_wheelspeed;
-}
-
-void set_var_rr_wheelspeed(const char *value) {
-    strncpy(rr_wheelspeed, value, sizeof(rr_wheelspeed) / sizeof(char));
-    rr_wheelspeed[sizeof(rr_wheelspeed) / sizeof(char) - 1] = 0;
 }

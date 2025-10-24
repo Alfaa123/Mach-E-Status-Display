@@ -30,3 +30,17 @@ void updateBatteryLevel(CanFrame frame) {
   sprintf(buffer, "%.2f%%", batLevel);
   set_var_battery_level(buffer);
 }
+
+void updatePrimaryMotorTorque(CanFrame frame) {
+  float primaryMotorTorque = (frame.data[4] * 256 + frame.data[5]) * 0.1;
+  char buffer[7];
+  sprintf(buffer, "%.2f nM", primaryMotorTorque);
+  set_var_primary_motor_torque(buffer);
+}
+
+void updateSecondaryMotorTorque(CanFrame frame) {
+  float secondaryMotorTorque = (frame.data[4] * 256 + frame.data[5]) * 0.1;
+  char buffer[7];
+  sprintf(buffer, "%.2f nM", secondaryMotorTorque);
+  set_var_secondary_motor_torque(buffer);
+}

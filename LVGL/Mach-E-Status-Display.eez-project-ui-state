@@ -1,8 +1,7 @@
 {
   "navigation": {
     "selectedUserPageObject": "[Mach-E-Status-Display.eez-project]:/userPages/0",
-    "selectedUserWidgetObject": "[Mach-E-Status-Display.eez-project]:/userWidgets/-1",
-    "selectedGlobalVariableObject": "[Mach-E-Status-Display.eez-project]:/variables/globalVariables/5",
+    "selectedGlobalVariableObject": "[Mach-E-Status-Display.eez-project]:/variables/globalVariables/-1",
     "selectedBitmapObject": "[Mach-E-Status-Display.eez-project]:/bitmaps/0",
     "subnavigationSelectedItems": {
       "variables-tab/sub-navigation/selected-item": "Global"
@@ -988,9 +987,7 @@
   "objects": {
     "[Mach-E-Status-Display.eez-project]:/userPages/0[flow-state]": {
       "selection": {
-        "0": {
-          "4": {}
-        }
+        "0": {}
       },
       "transform": {
         "translate": {
@@ -1035,9 +1032,12 @@
   "showComponentDescriptions": true,
   "logsPanelFilter": "all",
   "selectedStylePropertyName": "",
-  "lvglPart": "MAIN",
+  "lvglPart": "INDICATOR",
   "lvglState": "DEFAULT",
-  "lvglExpandedPropertiesGroup": [],
+  "lvglExpandedPropertiesGroup": [
+    "POSITION AND SIZE",
+    "TEXT"
+  ],
   "showInactiveFlowsInDebugger": true,
   "globalFlowZoom": true,
   "flowZoom": 1,
