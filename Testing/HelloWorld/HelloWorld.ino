@@ -48,7 +48,7 @@ lv_color_t *disp_draw_buf;
 TCA9534 TCA(0x20);
 #define GFX_BL 1
 
-void sendObdFrame(uint8_t obdId);
+void sendObdFrame(uint16_t CANId);
 
 
 
@@ -95,43 +95,48 @@ void PeriodicRequests( void * pvParameters){
 
   while(1==1){
     static unsigned long lastTime = 0;
-    if (millis() > lastTime + 1000){
+    if (millis() > lastTime + 100){
       lastTime = millis();
-      sendObdFrame(0);
-      //Serial.println("Sent CAN Request");
+      sendObdFrame(0x7DF);
     }
 
 
     if(ESP32Can.readFrame(rxFrame, 1000)) {
 
         }
-        if(rxFrame.identifier == 0x7EC) {    
-                  Serial.printf("Received frame: %03X  \r\n", rxFrame.identifier);
-if(rxFrame.data[1] = 0x7F){
-          Serial.print("Negative Response Recieved From ");
-          Serial.print(rxFrame.identifier, HEX);
-          Serial.print(": SID: ");
-          Serial.print(rxFrame.data[2], HEX);
-          Serial.print(" NRC: ");
-          Serial.println(rxFrame.data[3], HEX);
+        if(rxFrame.identifier != 0x59E) {
+          //if(1==1) {    
+        //Serial.printf("Received frame: %03X  \r\n", rxFrame.identifier);
+if(rxFrame.data[1] = 0x22 + 0x40)
+//if(1==1)
+{
+          //Serial.print("Response Recieved From ");
+          //Serial.println(rxFrame.identifier, HEX);
 
 
-            Serial.print("Data: ");
-            Serial.print(rxFrame.data[0], HEX);
-            Serial.print(" ");
-            Serial.print(rxFrame.data[1], HEX);
-                        Serial.print(" ");
-            Serial.print(rxFrame.data[2], HEX);
-                        Serial.print(" ");
-            Serial.print(rxFrame.data[3], HEX);
-                        Serial.print(" ");
-            Serial.print(rxFrame.data[4], HEX);
-                        Serial.print(" ");
-            Serial.print(rxFrame.data[5], HEX);
-                        Serial.print(" ");
-            Serial.print(rxFrame.data[6], HEX);
-                        Serial.print(" ");
-            Serial.println(rxFrame.data[7], HEX);                     
+            //Serial.print("Data: ");
+            //Serial.print(rxFrame.data[0], HEX);
+            //Serial.print(" ");
+            //Serial.print(rxFrame.data[1], HEX);
+            //           Serial.print(" ");
+            //Serial.print(rxFrame.data[2], HEX);
+            //            Serial.print(" ");
+            //Serial.print(rxFrame.data[3], HEX);
+            //            Serial.print(" ");
+            //Serial.print(rxFrame.data[4], HEX);
+            //            Serial.print(" ");
+            //Serial.print(rxFrame.data[5], HEX);
+            //            Serial.print(" ");
+            //Serial.print(rxFrame.data[6], HEX);
+            //            Serial.print(" ");
+            //Serial.println(rxFrame.data[7], HEX);
+            float batLevel = (rxFrame.data[4] *256+rxFrame.data[5])*0.002;
+            set_var_battery_level_float(batLevel);
+            char buffer[7];
+            sprintf(buffer,"%.2f%%",batLevel);
+            set_var_battery_level(buffer);
+            Serial.print("Battery Level: ");
+            Serial.println((rxFrame.data[4] *256+rxFrame.data[5])*0.002);                     
 }
 }
   }
@@ -149,7 +154,7 @@ xTaskCreatePinnedToCore(
                     "PeriodicRequests",     /* name of task. */
                     10000,       /* Stack size of task */
                     NULL,        /* parameter of the task */
-                    1,           /* priority of the task */
+                    10,           /* priority of the task */
                     &PeriodicRequestsHandle,      /* Task handle to keep track of created task */
                     0);          /* pin task to core 0 */     
 
@@ -227,15 +232,17 @@ void loop()
 
 }
 
-void sendObdFrame(uint8_t obdId) {
+void sendObdFrame(uint16_t CANId) {
+    Serial.print("Request Sent To: ");
+    Serial.println(CANId, HEX);
     CanFrame obdFrame         = {0};
-    obdFrame.identifier       = 0x700; // Default OBD2 address;
+    obdFrame.identifier       = CANId; // Default OBD2 address;
     obdFrame.extd             = 0;
     obdFrame.data_length_code = 8;
     obdFrame.data[0]          = 0x03;
     obdFrame.data[1]          = 0x22;
     obdFrame.data[2]          = 0x48;
-    obdFrame.data[3]          = 0x00; // Best use 0xAA (0b10101010) instead of 0
+    obdFrame.data[3]          = 0x01; // Best use 0xAA (0b10101010) instead of 0
     obdFrame.data[4]          = 0xAA; // TWAI / CAN works better this way, as it
     obdFrame.data[5]          = 0xAA; // needs to avoid bit-stuffing
     obdFrame.data[6]          = 0xAA;

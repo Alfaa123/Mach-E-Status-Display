@@ -5,6 +5,25 @@ char fl_wheelspeed[5] = { 0 };
 char fr_wheelspeed[5] = { 0 };
 char rl_wheelspeed[5] = { 0 };
 char rr_wheelspeed[5] = { 0 };
+char battery_level[7] = { 0 };
+float battery_level_float;
+
+float get_var_battery_level_float() {
+    return battery_level_float;
+}
+
+void set_var_battery_level_float(float value) {
+    battery_level_float = value;
+}
+
+const char *get_var_battery_level() {
+    return battery_level;
+}
+
+void set_var_battery_level(const char *value) {
+    strncpy(battery_level, value, sizeof(battery_level) / sizeof(char));
+    battery_level[sizeof(battery_level) / sizeof(char) - 1] = 0;
+}
 
 const char *get_var_fl_wheelspeed() {
     return fl_wheelspeed;
