@@ -5,3 +5,6 @@
 
 void printDebugInfo(CanFrame frame);
 void updateBatteryLevel (CanFrame frame);
+void updatePrimaryMotorTorque(CanFrame frame);
+void updateSecondaryMotorTorque(CanFrame frame);
+void updateTorqueSplit();

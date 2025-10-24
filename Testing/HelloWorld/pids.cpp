@@ -2,6 +2,9 @@
 #include "screenVariables.h"
 #include <Arduino.h>
 
+float primaryMotorTorque = 0;
+float secondaryMotorTorque = 0;
+
 void printDebugInfo(CanFrame frame) {
   Serial.print("Response Recieved From ");
   Serial.println(frame.identifier, HEX);
@@ -32,15 +35,24 @@ void updateBatteryLevel(CanFrame frame) {
 }
 
 void updatePrimaryMotorTorque(CanFrame frame) {
-  float primaryMotorTorque = (frame.data[4] * 256 + frame.data[5]) * 0.1;
-  char buffer[7];
-  sprintf(buffer, "%.2f nM", primaryMotorTorque);
+  primaryMotorTorque = (int8_t(frame.data[4]) * 256 + frame.data[5]) * 0.1;
+  char buffer[10];
+  sprintf(buffer, "%.1f nM", primaryMotorTorque);
   set_var_primary_motor_torque(buffer);
 }
 
 void updateSecondaryMotorTorque(CanFrame frame) {
-  float secondaryMotorTorque = (frame.data[4] * 256 + frame.data[5]) * 0.1;
-  char buffer[7];
-  sprintf(buffer, "%.2f nM", secondaryMotorTorque);
+  secondaryMotorTorque = (int8_t(frame.data[4]) * 256 + frame.data[5]) * 0.1;
+  char buffer[10];
+  sprintf(buffer, "%.1f nM", secondaryMotorTorque);
   set_var_secondary_motor_torque(buffer);
+}
+
+void updateTorqueSplit(){
+  float total = primaryMotorTorque + secondaryMotorTorque;
+  if (total > 5 || total < -5){  
+    float ratio = (primaryMotorTorque / total) * 100;
+    set_var_torque_split(ratio);}
+  else {set_var_torque_split(50);}
+
 }

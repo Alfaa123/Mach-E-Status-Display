@@ -4,8 +4,8 @@
 char battery_level[7] = { 0 };
 float battery_level_float;
 float torque_split;
-char primary_motor_torque[7] = { 0 };
-char secondary_motor_torque[7] = { 0 };
+char primary_motor_torque[10] = { 0 };
+char secondary_motor_torque[10] = { 0 };
 
 const char *get_var_secondary_motor_torque() {
     return secondary_motor_torque;

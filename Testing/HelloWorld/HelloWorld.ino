@@ -90,8 +90,10 @@ void my_print(lv_log_level_t level, const char *buf) {
 }
 
 void DisplayLoop(void *pvParameters){
+for (;;){
   lv_timer_handler();
   ui_tick();
+}
 }
 
 void PeriodicRequests(void *pvParameters) {
@@ -100,8 +102,8 @@ void PeriodicRequests(void *pvParameters) {
 
   while (1 == 1) {
     static unsigned long lastTime = 0;
-    if (millis() > lastTime + 10000) {
-      lastTime = millis();
+    if (millis() > lastTime + 10) {
+      //lastTime = millis();
       //Battery SoC
       sendUDSRequest(0x7E4, 0x4801);
       //Primary Motor Torque
@@ -123,11 +125,15 @@ void PeriodicRequests(void *pvParameters) {
           if (rxFrame.identifier == 0x7EE){
             if (rxFrame.data[2] == 0x48 && rxFrame.data[3] == 0x1C){
               printDebugInfo(rxFrame);
+              updatePrimaryMotorTorque(rxFrame);
+              updateTorqueSplit();
             }
           }
           if (rxFrame.identifier ==0x7EF){
             if (rxFrame.data[2] == 0x48 && rxFrame.data[3] == 0x1a){
               printDebugInfo(rxFrame);
+              updateSecondaryMotorTorque(rxFrame);
+              updateTorqueSplit();
             }
           }
           if (rxFrame.identifier == 0x7EC) {
@@ -219,7 +225,7 @@ void setup(void) {
     xTaskCreatePinnedToCore(
     DisplayLoop,        /* Task function. */
     "DisplayLoop",      /* name of task. */
-    10000,                   /* Stack size of task */
+    50000,                   /* Stack size of task */
     NULL,                    /* parameter of the task */
     2,                      /* priority of the task */
     &DisplayLoopHandle,     /* Task handle to keep track of created task */
