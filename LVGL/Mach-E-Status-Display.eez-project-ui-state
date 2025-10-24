@@ -1,7 +1,7 @@
 {
   "navigation": {
     "selectedUserPageObject": "[Mach-E-Status-Display.eez-project]:/userPages/0",
-    "selectedGlobalVariableObject": "[Mach-E-Status-Display.eez-project]:/variables/globalVariables/4",
+    "selectedGlobalVariableObject": "[Mach-E-Status-Display.eez-project]:/variables/globalVariables/6",
     "selectedBitmapObject": "[Mach-E-Status-Display.eez-project]:/bitmaps/0",
     "subnavigationSelectedItems": {
       "variables-tab/sub-navigation/selected-item": "Global"
@@ -206,8 +206,7 @@
                   },
                   "icon": "svg:page"
                 }
-              ],
-              "active": true
+              ]
             },
             {
               "type": "row",
@@ -227,7 +226,8 @@
                       "enableClose": false,
                       "icon": "svg:properties"
                     }
-                  ]
+                  ],
+                  "active": true
                 },
                 {
                   "type": "tabset",
@@ -988,15 +988,17 @@
     "[Mach-E-Status-Display.eez-project]:/userPages/0[flow-state]": {
       "selection": {
         "0": {
-          "8": {
+          "8": {},
+          "9": {},
+          "14": {
             "$selected": true
           }
         }
       },
       "transform": {
         "translate": {
-          "x": -400,
-          "y": -378
+          "x": -185,
+          "y": -290
         },
         "scale": 1
       },
@@ -1040,7 +1042,6 @@
   "lvglState": "DEFAULT",
   "lvglExpandedPropertiesGroup": [
     "POSITION AND SIZE",
-    "TEXT",
     "LAYOUT",
     "MISCELLANEOUS"
   ],

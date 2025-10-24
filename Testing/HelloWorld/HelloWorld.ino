@@ -38,8 +38,8 @@
 
 CanFrame rxFrame;
 
-TaskHandle_t PeriodicRequestsHandle;
 TaskHandle_t DisplayLoopHandle;
+TaskHandle_t MessageHandlerHandle;
 
 uint32_t screenWidth;
 uint32_t screenHeight;
@@ -89,32 +89,20 @@ void my_print(lv_log_level_t level, const char *buf) {
   Serial.flush();
 }
 
-void DisplayLoop(void *pvParameters){
-for (;;){
-  lv_timer_handler();
-  ui_tick();
-}
+void DisplayLoop(void *pvParameters) {
+  for (;;) {
+    lv_timer_handler();
+    ui_tick();
+  }
 }
 
-void PeriodicRequests(void *pvParameters) {
-  Serial.print("Periodic CAN requests started on core ");
+void MessageHandler(void *pvParameters) {
+  Serial.print("Message Handler started on core ");
   Serial.println(xPortGetCoreID());
-
-  while (1 == 1) {
-    static unsigned long lastTime = 0;
-    if (millis() > lastTime + 10) {
-      //lastTime = millis();
-      //Battery SoC
-      sendUDSRequest(0x7E4, 0x4801);
-      //Primary Motor Torque
-      sendUDSRequest(0x7E6, 0x481c);
-      //Secondary Motor Torque
-      sendUDSRequest(0x7E7, 0x481a);
-    }
-
+  for (;;) {
     if (ESP32Can.readFrame(rxFrame, 1000)) {
       if (rxFrame.identifier != 0x59E) {
-        if (rxFrame.data[1]== 0x7F){
+        if (rxFrame.data[1] == 0x7F) {
           Serial.println("Negative Response:");
           printDebugInfo(rxFrame);
           Serial.println();
@@ -122,15 +110,19 @@ void PeriodicRequests(void *pvParameters) {
         //Serial.print("Response from: ");
         //Serial.println(rxFrame.identifier, HEX);
         if (rxFrame.data[1] == 0x22 + 0x40) {
-          if (rxFrame.identifier == 0x7EE){
-            if (rxFrame.data[2] == 0x48 && rxFrame.data[3] == 0x1C){
+          if (rxFrame.identifier == 0x7EE) {
+            if (rxFrame.data[2] == 0x48 && rxFrame.data[3] == 0x1C) {
               printDebugInfo(rxFrame);
               updatePrimaryMotorTorque(rxFrame);
               updateTorqueSplit();
             }
+            if (rxFrame.data[2] == 0x48 && rxFrame.data[3] == 0xe0) {
+              printDebugInfo(rxFrame);
+              updateHVBThermalMode(rxFrame);
+            }
           }
-          if (rxFrame.identifier ==0x7EF){
-            if (rxFrame.data[2] == 0x48 && rxFrame.data[3] == 0x1a){
+          if (rxFrame.identifier == 0x7EF) {
+            if (rxFrame.data[2] == 0x48 && rxFrame.data[3] == 0x1a) {
               printDebugInfo(rxFrame);
               updateSecondaryMotorTorque(rxFrame);
               updateTorqueSplit();
@@ -141,10 +133,39 @@ void PeriodicRequests(void *pvParameters) {
               printDebugInfo(rxFrame);
               updateBatteryLevel(rxFrame);
             }
+            if (rxFrame.data[2] == 0x48 && rxFrame.data[3] == 0x00) {
+              printDebugInfo(rxFrame);
+              updateHVBTemp(rxFrame);
+            }
           }
         }
       }
     }
+  }
+}
+
+void PeriodicRequestsFullSpeed(void *pvParameters) {
+  Serial.print("Periodic Full Speed CAN requests started on core ");
+  Serial.println(xPortGetCoreID());
+  for (;;) {
+    //Primary Motor Torque
+    sendUDSRequest(0x7E6, 0x481c);
+    //Secondary Motor Torque
+    sendUDSRequest(0x7E7, 0x481a);
+  }
+}
+
+void PeriodicRequests1s(void *pvParameters) {
+  Serial.print("Periodic 1s CAN requests started on core ");
+  Serial.println(xPortGetCoreID());
+  for (;;) {
+    //HVB Thermal Mode
+    sendUDSRequest(0x7E6, 0x48e0);
+    //Battery SoC
+    sendUDSRequest(0x7E4, 0x4801);
+    //HVB Temp
+    sendUDSRequest(0x7E4, 0x4800);
+    delay(1000);
   }
 }
 
@@ -156,13 +177,31 @@ void setup(void) {
   Serial.println(xPortGetCoreID());
 
   xTaskCreatePinnedToCore(
-    PeriodicRequests,        /* Task function. */
-    "PeriodicRequests",      /* name of task. */
-    10000,                   /* Stack size of task */
-    NULL,                    /* parameter of the task */
-    10,                      /* priority of the task */
-    &PeriodicRequestsHandle, /* Task handle to keep track of created task */
-    0);                      /* pin task to core 0 */
+    PeriodicRequests1s,   /* Task function. */
+    "PeriodicRequests1s", /* name of task. */
+    10000,              /* Stack size of task */
+    NULL,               /* parameter of the task */
+    1,                  /* priority of the task */
+    NULL,               /* Task handle to keep track of created task */
+    0);                 /* pin task to core 0 */
+
+  xTaskCreatePinnedToCore(
+    PeriodicRequestsFullSpeed,   /* Task function. */
+    "PeriodicRequestsFullSpeed", /* name of task. */
+    10000,              /* Stack size of task */
+    NULL,               /* parameter of the task */
+    1,                  /* priority of the task */
+    NULL,               /* Task handle to keep track of created task */
+    0);                 /* pin task to core 0 */
+
+  xTaskCreatePinnedToCore(
+    MessageHandler,        /* Task function. */
+    "MessageHandler",      /* name of task. */
+    10000,                 /* Stack size of task */
+    NULL,                  /* parameter of the task */
+    2,                     /* priority of the task */
+    &MessageHandlerHandle, /* Task handle to keep track of created task */
+    0);
 
   if (ESP32Can.begin(ESP32Can.convertSpeed(500), CAN_TX, CAN_RX, 10, 10)) {
     Serial.println("CAN bus started!");
@@ -222,25 +261,25 @@ void setup(void) {
   }
   ui_init();
   Serial.println("UI Started");
-    xTaskCreatePinnedToCore(
+  xTaskCreatePinnedToCore(
     DisplayLoop,        /* Task function. */
     "DisplayLoop",      /* name of task. */
-    50000,                   /* Stack size of task */
-    NULL,                    /* parameter of the task */
-    2,                      /* priority of the task */
-    &DisplayLoopHandle,     /* Task handle to keep track of created task */
-    1);                      /* pin task to core 0 */
+    50000,              /* Stack size of task */
+    NULL,               /* parameter of the task */
+    3,                  /* priority of the task */
+    &DisplayLoopHandle, /* Task handle to keep track of created task */
+    1);                 /* pin task to core 0 */
 }
 void loop() {}
 
-void sendUDSRequest(uint16_t CANId, uint16_t PID)  {
+void sendUDSRequest(uint16_t CANId, uint16_t PID) {
   Serial.print("UDS Request Sent To: 0x");
   Serial.print(CANId, HEX);
   Serial.print(" For PID: 0x");
   Serial.println(PID, HEX);
   CanFrame obdFrame = { 0 };
   uint8_t lower = PID & 0xff;
-  uint8_t upper = (PID >> 8) & 0xff; 
+  uint8_t upper = (PID >> 8) & 0xff;
   obdFrame.identifier = CANId;  // Default OBD2 address;
   obdFrame.extd = 0;
   obdFrame.data_length_code = 8;
@@ -248,22 +287,22 @@ void sendUDSRequest(uint16_t CANId, uint16_t PID)  {
   obdFrame.data[1] = 0x22;
   obdFrame.data[2] = upper;
   obdFrame.data[3] = lower;  // Best use 0xAA (0b10101010) instead of 0
-  obdFrame.data[4] = 0xAA;  // TWAI / CAN works better this way, as it
-  obdFrame.data[5] = 0xAA;  // needs to avoid bit-stuffing
+  obdFrame.data[4] = 0xAA;   // TWAI / CAN works better this way, as it
+  obdFrame.data[5] = 0xAA;   // needs to avoid bit-stuffing
   obdFrame.data[6] = 0xAA;
   obdFrame.data[7] = 0xAA;
   // Accepts both pointers and references
   ESP32Can.writeFrame(obdFrame);  // timeout defaults to 1 ms
 }
 
-void sendUDSMultiRequest(uint16_t CANId, uint16_t PID)  {
+void sendUDSMultiRequest(uint16_t CANId, uint16_t PID) {
   Serial.print("UDS Request Sent To: 0x");
   Serial.print(CANId, HEX);
   Serial.print(" For PID: 0x");
   Serial.println(PID, HEX);
   CanFrame obdFrame = { 0 };
   uint8_t lower = PID & 0xff;
-  uint8_t upper = (PID >> 8) & 0xff; 
+  uint8_t upper = (PID >> 8) & 0xff;
   obdFrame.identifier = CANId;  // Default OBD2 address;
   obdFrame.extd = 0;
   obdFrame.data_length_code = 8;
@@ -272,7 +311,7 @@ void sendUDSMultiRequest(uint16_t CANId, uint16_t PID)  {
   obdFrame.data[2] = 0x03;
   obdFrame.data[3] = upper;  // Best use 0xAA (0b10101010) instead of 0
   obdFrame.data[4] = lower;  // TWAI / CAN works better this way, as it
-  obdFrame.data[5] = 0xAA;  // needs to avoid bit-stuffing
+  obdFrame.data[5] = 0xAA;   // needs to avoid bit-stuffing
   obdFrame.data[6] = 0xAA;
   obdFrame.data[7] = 0xAA;
   // Accepts both pointers and references

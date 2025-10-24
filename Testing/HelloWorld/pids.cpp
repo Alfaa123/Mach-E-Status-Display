@@ -34,6 +34,40 @@ void updateBatteryLevel(CanFrame frame) {
   set_var_battery_level(buffer);
 }
 
+void updateHVBTemp(CanFrame frame) {
+  float batTemp = (frame.data[4] - 50) * 1.8 + 32;
+  char buffer[4];
+  sprintf(buffer, "%.1f f", batTemp);
+  set_var_hvb_temp(buffer);
+}
+
+void updateHVBThermalMode(CanFrame frame) {
+  switch (frame.data[4]) {
+    case 0:
+      set_var_hvb_thermal_mode("Off");
+      break;
+    case 1:
+    set_var_hvb_thermal_mode("Equalizing");
+      break;
+    case 2:
+    set_var_hvb_thermal_mode("Cooling - Flow");
+      break;
+    case 3:
+    set_var_hvb_thermal_mode("Cooling - Fan");
+      break;
+    case 4:
+    set_var_hvb_thermal_mode("Cooling - Mod Chill");
+      break;
+    case 5:
+    set_var_hvb_thermal_mode("Cooling - Max Chill");
+      break;
+    case 15:
+    set_var_hvb_thermal_mode("Heating");
+      break;
+  }
+  
+}
+
 void updatePrimaryMotorTorque(CanFrame frame) {
   primaryMotorTorque = (int8_t(frame.data[4]) * 256 + frame.data[5]) * 0.1;
   char buffer[10];
@@ -48,11 +82,12 @@ void updateSecondaryMotorTorque(CanFrame frame) {
   set_var_secondary_motor_torque(buffer);
 }
 
-void updateTorqueSplit(){
+void updateTorqueSplit() {
   float total = primaryMotorTorque + secondaryMotorTorque;
-  if (total > 5 || total < -5){  
+  if (total > 5 || total < -5) {
     float ratio = (primaryMotorTorque / total) * 100;
-    set_var_torque_split(ratio);}
-  else {set_var_torque_split(50);}
-
+    set_var_torque_split(ratio);
+  } else {
+    set_var_torque_split(50);
+  }
 }

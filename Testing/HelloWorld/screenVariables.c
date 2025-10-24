@@ -6,6 +6,26 @@ float battery_level_float;
 float torque_split;
 char primary_motor_torque[10] = { 0 };
 char secondary_motor_torque[10] = { 0 };
+char hvb_thermal_mode[20] = { 0 };
+char hvb_temp[4] = { 0 };
+
+const char *get_var_hvb_temp() {
+    return hvb_temp;
+}
+
+void set_var_hvb_temp(const char *value) {
+    strncpy(hvb_temp, value, sizeof(hvb_temp) / sizeof(char));
+    hvb_temp[sizeof(hvb_temp) / sizeof(char) - 1] = 0;
+}
+
+const char *get_var_hvb_thermal_mode() {
+    return hvb_thermal_mode;
+}
+
+void set_var_hvb_thermal_mode(const char *value) {
+    strncpy(hvb_thermal_mode, value, sizeof(hvb_thermal_mode) / sizeof(char));
+    hvb_thermal_mode[sizeof(hvb_thermal_mode) / sizeof(char) - 1] = 0;
+}
 
 const char *get_var_secondary_motor_torque() {
     return secondary_motor_torque;
