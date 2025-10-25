@@ -1,0 +1,6 @@
+Coolant Pump A Status: 0x7E0 PID: 0x0591 Bit 6 = 0x02 On 0x00 Off
+Heater Loop Temperature: 0x7E0 PID: 0xF467 Byte 6+7 = Temperature
+Coolant Temp 1 (Motor Loop): 0x7E0 PID: 0xF405
+A/C Compressor RPM: 0x7C7 PID 0x484B Byte 5 = RPM*50
+Radar Primary Target Range: 0x764 PID: 0xA223 Bits 5+6 = range
+Coolant Pump A (HVB): 0x7E4 PID: 0x05CB Byte 5 1=on
