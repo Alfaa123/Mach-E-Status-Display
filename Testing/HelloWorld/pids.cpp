@@ -36,7 +36,7 @@ void updateBatteryLevel(CanFrame frame) {
 
 void updateHVBTemp(CanFrame frame) {
   float batTemp = (frame.data[4] - 50) * 1.8 + 32;
-  char buffer[4];
+  char buffer[8];
   sprintf(buffer, "%.1f f", batTemp);
   set_var_hvb_temp(buffer);
 }

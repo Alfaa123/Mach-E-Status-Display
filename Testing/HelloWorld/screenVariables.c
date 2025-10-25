@@ -7,7 +7,7 @@ float torque_split;
 char primary_motor_torque[10] = { 0 };
 char secondary_motor_torque[10] = { 0 };
 char hvb_thermal_mode[20] = { 0 };
-char hvb_temp[4] = { 0 };
+char hvb_temp[8] = { 0 };
 
 const char *get_var_hvb_temp() {
     return hvb_temp;

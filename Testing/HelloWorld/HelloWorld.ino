@@ -150,8 +150,10 @@ void PeriodicRequestsFullSpeed(void *pvParameters) {
   for (;;) {
     //Primary Motor Torque
     sendUDSRequest(0x7E6, 0x481c);
+    delay(100);
     //Secondary Motor Torque
     sendUDSRequest(0x7E7, 0x481a);
+    delay(100);
   }
 }
 
@@ -161,11 +163,14 @@ void PeriodicRequests1s(void *pvParameters) {
   for (;;) {
     //HVB Thermal Mode
     sendUDSRequest(0x7E6, 0x48e0);
+    delay(100);
     //Battery SoC
     sendUDSRequest(0x7E4, 0x4801);
+    delay(100);
     //HVB Temp
     sendUDSRequest(0x7E4, 0x4800);
-    delay(1000);
+    delay(800);
+
   }
 }
 
