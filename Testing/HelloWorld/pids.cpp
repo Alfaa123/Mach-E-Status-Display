@@ -2,9 +2,6 @@
 #include "screenVariables.h"
 #include <Arduino.h>
 
-float primaryMotorTorque = 0;
-float secondaryMotorTorque = 0;
-
 void printDebugInfo(CanFrame frame) {
   Serial.print("Response Recieved From ");
   Serial.println(frame.identifier, HEX);
@@ -37,7 +34,7 @@ void updateBatteryLevel(CanFrame frame) {
 void updateHVBTemp(CanFrame frame) {
   float batTemp = (frame.data[4] - 50) * 1.8 + 32;
   char buffer[8];
-  sprintf(buffer, "%.1f f", batTemp);
+  sprintf(buffer, "%.1f °f", batTemp);
   set_var_hvb_temp(buffer);
 }
 
@@ -68,26 +65,83 @@ void updateHVBThermalMode(CanFrame frame) {
   
 }
 
-void updatePrimaryMotorTorque(CanFrame frame) {
-  primaryMotorTorque = (int8_t(frame.data[4]) * 256 + frame.data[5]) * 0.1;
+void updatePrimaryMotortemp(CanFrame frame) {
+  float primaryMotortemp = (int8_t(frame.data[4]) * 256 + frame.data[5]) * 1.8+32;
   char buffer[10];
-  sprintf(buffer, "%.1f nM", primaryMotorTorque);
-  set_var_primary_motor_torque(buffer);
+  sprintf(buffer, "%.1f °f", primaryMotortemp);
+  set_var_primary_motor_temp(buffer);
 }
 
-void updateSecondaryMotorTorque(CanFrame frame) {
-  secondaryMotorTorque = (int8_t(frame.data[4]) * 256 + frame.data[5]) * 0.1;
+void updateSecondaryMotortemp(CanFrame frame) {
+  float secondaryMotortemp = (int8_t(frame.data[4]) * 256 + frame.data[5])  * 1.8+32;
   char buffer[10];
-  sprintf(buffer, "%.1f nM", secondaryMotorTorque);
-  set_var_secondary_motor_torque(buffer);
+  sprintf(buffer, "%.1f °f", secondaryMotortemp);
+  set_var_secondary_motor_temp(buffer);
 }
 
-void updateTorqueSplit() {
-  float total = primaryMotorTorque + secondaryMotorTorque;
-  if (total > 5 || total < -5) {
-    float ratio = (primaryMotorTorque / total) * 100;
-    set_var_torque_split(ratio);
-  } else {
-    set_var_torque_split(50);
+void updateCoolantHeaterPower(CanFrame frame){
+  int16_t coolantHeaterPower = (frame.data[4] << 8) | frame.data[5];
+  float coolantHeaterPowerFloat = coolantHeaterPower * 0.001;
+  char buffer[9];
+  sprintf(buffer, "%.3f kW", coolantHeaterPower);
+  set_var_coolant_heater_power(buffer);
+}
+
+void updateCoolantHeaterMode(CanFrame frame){
+  switch (frame.data[4]) {
+    case 0:
+      set_var_coolant_heater_mode("Off");
+      break;
+    case 1:
+    set_var_coolant_heater_mode("On");
+      break;
+    case 2:
+    set_var_coolant_heater_mode("Dgrd");
+      break;
+    case 3:
+    set_var_coolant_heater_mode("Shut");
+      break;
+    case 4:
+    set_var_coolant_heater_mode("Shrt");
+      break;
+    case 5:
+    set_var_coolant_heater_mode("NRes");
+      break;
+    case 7:
+    set_var_coolant_heater_mode("Stop");
+      break;
   }
+
 }
+
+void updateBatteryVoltage(CanFrame frame){
+  int16_t batVoltage = (frame.data[4] << 8) | frame.data[5];
+  float batVoltageFloat = batVoltage *0.01;
+  char buffer[8];
+  sprintf(buffer, "%.2f v", batVoltageFloat);
+  set_var_battery_voltage(buffer);
+
+}
+
+void updateBatteryCurrent(CanFrame frame){
+  float batCurrent = (int8_t(frame.data[4]) * 256 + frame.data[5]) * 0.1;
+  char buffer[10];
+  sprintf(buffer, "%.1f A", batCurrent);
+  set_var_battery_current(buffer);
+
+}
+
+void updateInteriorTemp(CanFrame frame){
+  float interiorTemp = (frame.data[4] - 40) * 1.8 + 32;
+  char buffer[8];
+  sprintf(buffer, "%.1f °f", interiorTemp);
+  set_var_interior_temperature(buffer);
+}
+
+void updateHeaterLoopTemp(CanFrame frame){
+  float heaterLoopTemp = (int8_t(frame.data[4]) * 256 + frame.data[5])  * 1.8+32;
+  char buffer[10];
+  sprintf(buffer, "%.1f °f", heaterLoopTemp);
+  set_var_heater_loop_temp(buffer);
+}
+

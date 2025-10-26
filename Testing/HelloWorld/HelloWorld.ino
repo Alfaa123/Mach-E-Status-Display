@@ -83,16 +83,12 @@ void my_disp_flush(lv_display_t *disp, const lv_area_t *area, uint8_t *px_map) {
   lv_disp_flush_ready(disp);
 }
 
-void my_print(lv_log_level_t level, const char *buf) {
-  LV_UNUSED(level);
-  Serial.println(buf);
-  Serial.flush();
-}
-
 void DisplayLoop(void *pvParameters) {
   for (;;) {
-    lv_timer_handler();
+    lv_task_handler();
+    gfx->flush();
     ui_tick();
+    delay(5);
   }
 }
 
@@ -110,32 +106,49 @@ void MessageHandler(void *pvParameters) {
         //Serial.print("Response from: ");
         //Serial.println(rxFrame.identifier, HEX);
         if (rxFrame.data[1] == 0x22 + 0x40) {
+          //Replies sent to 0x7E6
           if (rxFrame.identifier == 0x7EE) {
-            if (rxFrame.data[2] == 0x48 && rxFrame.data[3] == 0x1C) {
-              printDebugInfo(rxFrame);
-              updatePrimaryMotorTorque(rxFrame);
-              updateTorqueSplit();
+            if (rxFrame.data[2] == 0x48 && rxFrame.data[3] == 0x1F) {
+              updatePrimaryMotortemp(rxFrame);
             }
             if (rxFrame.data[2] == 0x48 && rxFrame.data[3] == 0xe0) {
-              printDebugInfo(rxFrame);
               updateHVBThermalMode(rxFrame);
             }
-          }
-          if (rxFrame.identifier == 0x7EF) {
-            if (rxFrame.data[2] == 0x48 && rxFrame.data[3] == 0x1a) {
-              printDebugInfo(rxFrame);
-              updateSecondaryMotorTorque(rxFrame);
-              updateTorqueSplit();
+            if (rxFrame.data[2] == 0x48 && rxFrame.data[3] == 0xDE) {
+              updateHeaterLoopTemp(rxFrame);
+            }
+            if (rxFrame.data[2] == 0x48 && rxFrame.data[3] == 0xDF) {
+              updateCoolantHeaterMode(rxFrame);
             }
           }
+          //Replies sent to 0x7E7
+          if (rxFrame.identifier == 0x7EF) {
+            if (rxFrame.data[2] == 0x48 && rxFrame.data[3] == 0x20) {
+              updateSecondaryMotortemp(rxFrame);
+            }
+          }
+          //Replies sent to 0x7E4
           if (rxFrame.identifier == 0x7EC) {
             if (rxFrame.data[2] == 0x48 && rxFrame.data[3] == 0x01) {
-              printDebugInfo(rxFrame);
               updateBatteryLevel(rxFrame);
             }
             if (rxFrame.data[2] == 0x48 && rxFrame.data[3] == 0x00) {
-              printDebugInfo(rxFrame);
               updateHVBTemp(rxFrame);
+            }
+            if (rxFrame.data[2] == 0x48 && rxFrame.data[3] == 0x0D) {
+              updateBatteryVoltage(rxFrame);
+            }
+          }
+          //Replies sent to 0x7E0
+          if (rxFrame.identifier == 0x7E8) {
+            if (rxFrame.data[2] == 0xF4 && rxFrame.data[3] == 0x67) {
+              updateHeaterLoopTemp(rxFrame);
+            }
+          }
+          //Replies sent to 0x7E2
+          if (rxFrame.identifier == 0x7EA) {
+            if (rxFrame.data[2] == 0xDD && rxFrame.data[3] == 0x04) {
+              updateInteriorTemp(rxFrame);
             }
           }
         }
@@ -148,11 +161,8 @@ void PeriodicRequestsFullSpeed(void *pvParameters) {
   Serial.print("Periodic Full Speed CAN requests started on core ");
   Serial.println(xPortGetCoreID());
   for (;;) {
-    //Primary Motor Torque
-    sendUDSRequest(0x7E6, 0x481c);
-    delay(100);
-    //Secondary Motor Torque
-    sendUDSRequest(0x7E7, 0x481a);
+    //Battery Current
+    sendUDSRequest(0x7E4, 0x48f9);
     delay(100);
   }
 }
@@ -169,8 +179,28 @@ void PeriodicRequests1s(void *pvParameters) {
     delay(100);
     //HVB Temp
     sendUDSRequest(0x7E4, 0x4800);
-    delay(800);
-
+    delay(100);
+    //Primary Motor temp
+    sendUDSRequest(0x7E6, 0x481f);
+    delay(100);
+    //Secondary Motor temp
+    sendUDSRequest(0x7E7, 0x4820);
+    delay(100);
+    //Heater Loop Temp
+    sendUDSRequest(0x7E0, 0xF467);
+    delay(100);
+    //Coolant Heater Power
+    sendUDSRequest(0x7E6, 0x48de);
+    delay(100);
+    //Coolant Heater Mode
+    sendUDSRequest(0x7E6, 0x48df);
+    delay(100);
+    //Interior Temperature
+    sendUDSRequest(0x7E2, 0xDD04);
+    delay(100);
+    //Battery Voltage
+    sendUDSRequest(0x7E4, 0x480D);
+    delay(100);
   }
 }
 
@@ -184,20 +214,20 @@ void setup(void) {
   xTaskCreatePinnedToCore(
     PeriodicRequests1s,   /* Task function. */
     "PeriodicRequests1s", /* name of task. */
-    10000,              /* Stack size of task */
-    NULL,               /* parameter of the task */
-    1,                  /* priority of the task */
-    NULL,               /* Task handle to keep track of created task */
-    0);                 /* pin task to core 0 */
+    10000,                /* Stack size of task */
+    NULL,                 /* parameter of the task */
+    1,                    /* priority of the task */
+    NULL,                 /* Task handle to keep track of created task */
+    0);                   /* pin task to core 0 */
 
   xTaskCreatePinnedToCore(
     PeriodicRequestsFullSpeed,   /* Task function. */
     "PeriodicRequestsFullSpeed", /* name of task. */
-    10000,              /* Stack size of task */
-    NULL,               /* parameter of the task */
-    1,                  /* priority of the task */
-    NULL,               /* Task handle to keep track of created task */
-    0);                 /* pin task to core 0 */
+    10000,                       /* Stack size of task */
+    NULL,                        /* parameter of the task */
+    1,                           /* priority of the task */
+    NULL,                        /* Task handle to keep track of created task */
+    0);                          /* pin task to core 0 */
 
   xTaskCreatePinnedToCore(
     MessageHandler,        /* Task function. */
@@ -246,9 +276,6 @@ void setup(void) {
   lv_tick_set_cb(millis);
   Serial.println("LVGL Started");
 
-
-
-  //lv_log_register_print_cb(my_print);
 
   screenWidth = gfx->width();
   screenHeight = gfx->height();
