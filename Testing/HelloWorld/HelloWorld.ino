@@ -39,7 +39,6 @@
 CanFrame rxFrame;
 
 TaskHandle_t DisplayLoopHandle;
-TaskHandle_t MessageHandlerHandle;
 
 uint32_t screenWidth;
 uint32_t screenHeight;
@@ -103,8 +102,8 @@ void MessageHandler(void *pvParameters) {
           printDebugInfo(rxFrame);
           Serial.println();
         }
-        //Serial.print("Response from: ");
-        //Serial.println(rxFrame.identifier, HEX);
+        Serial.print("Response from: ");
+        Serial.println(rxFrame.identifier, HEX);
         if (rxFrame.data[1] == 0x22 + 0x40) {
           //Replies sent to 0x7E6
           if (rxFrame.identifier == 0x7EE) {
@@ -115,7 +114,7 @@ void MessageHandler(void *pvParameters) {
               updateHVBThermalMode(rxFrame);
             }
             if (rxFrame.data[2] == 0x48 && rxFrame.data[3] == 0xDE) {
-              updateHeaterLoopTemp(rxFrame);
+              updateCoolantHeaterPower(rxFrame);
             }
             if (rxFrame.data[2] == 0x48 && rxFrame.data[3] == 0xDF) {
               updateCoolantHeaterMode(rxFrame);
@@ -129,6 +128,9 @@ void MessageHandler(void *pvParameters) {
           }
           //Replies sent to 0x7E4
           if (rxFrame.identifier == 0x7EC) {
+            if (rxFrame.data[2] == 0x48 && rxFrame.data[3] == 0xF9) {
+              updateBatteryCurrent(rxFrame);
+            }
             if (rxFrame.data[2] == 0x48 && rxFrame.data[3] == 0x01) {
               updateBatteryLevel(rxFrame);
             }
@@ -154,6 +156,7 @@ void MessageHandler(void *pvParameters) {
         }
       }
     }
+    delay(5);
   }
 }
 
@@ -161,9 +164,7 @@ void PeriodicRequestsFullSpeed(void *pvParameters) {
   Serial.print("Periodic Full Speed CAN requests started on core ");
   Serial.println(xPortGetCoreID());
   for (;;) {
-    //Battery Current
-    sendUDSRequest(0x7E4, 0x48f9);
-    delay(100);
+
   }
 }
 
@@ -173,34 +174,37 @@ void PeriodicRequests1s(void *pvParameters) {
   for (;;) {
     //HVB Thermal Mode
     sendUDSRequest(0x7E6, 0x48e0);
-    delay(100);
+    delay(300);
     //Battery SoC
     sendUDSRequest(0x7E4, 0x4801);
-    delay(100);
-    //HVB Temp
+    delay(300);
+    // //HVB Temp
     sendUDSRequest(0x7E4, 0x4800);
-    delay(100);
-    //Primary Motor temp
-    sendUDSRequest(0x7E6, 0x481f);
-    delay(100);
+    delay(300);
+     //Primary Motor temp
+     sendUDSRequest(0x7E6, 0x481f);
+    delay(300);
     //Secondary Motor temp
     sendUDSRequest(0x7E7, 0x4820);
-    delay(100);
+    delay(300);
     //Heater Loop Temp
     sendUDSRequest(0x7E0, 0xF467);
-    delay(100);
+    delay(300);
     //Coolant Heater Power
     sendUDSRequest(0x7E6, 0x48de);
-    delay(100);
+    delay(300);
     //Coolant Heater Mode
     sendUDSRequest(0x7E6, 0x48df);
-    delay(100);
+    delay(300);
     //Interior Temperature
     sendUDSRequest(0x7E2, 0xDD04);
-    delay(100);
+    delay(300);
     //Battery Voltage
     sendUDSRequest(0x7E4, 0x480D);
-    delay(100);
+    delay(300);
+    //Battery Current
+    sendUDSRequest(0x7E4, 0x48f9);
+    delay(120);
   }
 }
 
@@ -210,33 +214,6 @@ void setup(void) {
   Serial.begin(115200);
   Serial.print("Setup started on core ");
   Serial.println(xPortGetCoreID());
-
-  xTaskCreatePinnedToCore(
-    PeriodicRequests1s,   /* Task function. */
-    "PeriodicRequests1s", /* name of task. */
-    10000,                /* Stack size of task */
-    NULL,                 /* parameter of the task */
-    1,                    /* priority of the task */
-    NULL,                 /* Task handle to keep track of created task */
-    0);                   /* pin task to core 0 */
-
-  xTaskCreatePinnedToCore(
-    PeriodicRequestsFullSpeed,   /* Task function. */
-    "PeriodicRequestsFullSpeed", /* name of task. */
-    10000,                       /* Stack size of task */
-    NULL,                        /* parameter of the task */
-    1,                           /* priority of the task */
-    NULL,                        /* Task handle to keep track of created task */
-    0);                          /* pin task to core 0 */
-
-  xTaskCreatePinnedToCore(
-    MessageHandler,        /* Task function. */
-    "MessageHandler",      /* name of task. */
-    10000,                 /* Stack size of task */
-    NULL,                  /* parameter of the task */
-    2,                     /* priority of the task */
-    &MessageHandlerHandle, /* Task handle to keep track of created task */
-    0);
 
   if (ESP32Can.begin(ESP32Can.convertSpeed(500), CAN_TX, CAN_RX, 10, 10)) {
     Serial.println("CAN bus started!");
@@ -257,6 +234,33 @@ void setup(void) {
 #ifdef DEV_DEVICE_INIT
   DEV_DEVICE_INIT();
 #endif
+
+ xTaskCreatePinnedToCore(
+    PeriodicRequests1s,   /* Task function. */
+    "PeriodicRequests1s", /* name of task. */
+    10000,                /* Stack size of task */
+    NULL,                 /* parameter of the task */
+    1,                    /* priority of the task */
+    NULL,                 /* Task handle to keep track of created task */
+    0);                   /* pin task to core 0 */
+
+  // xTaskCreatePinnedToCore(
+  //   PeriodicRequestsFullSpeed,   /* Task function. */
+  //   "PeriodicRequestsFullSpeed", /* name of task. */
+  //   10000,                       /* Stack size of task */
+  //   NULL,                        /* parameter of the task */
+  //   2,                           /* priority of the task */
+  //   NULL,                        /* Task handle to keep track of created task */
+  //   0);                          /* pin task to core 0 */
+
+  xTaskCreatePinnedToCore(
+    MessageHandler,        /* Task function. */
+    "MessageHandler",      /* name of task. */
+    100000,                 /* Stack size of task */
+    NULL,                  /* parameter of the task */
+    3,                     /* priority of the task */
+    NULL, /* Task handle to keep track of created task */
+    0);
 
 
   // Init Display
@@ -298,9 +302,9 @@ void setup(void) {
     "DisplayLoop",      /* name of task. */
     50000,              /* Stack size of task */
     NULL,               /* parameter of the task */
-    3,                  /* priority of the task */
+    4,                  /* priority of the task */
     &DisplayLoopHandle, /* Task handle to keep track of created task */
-    1);                 /* pin task to core 0 */
+    1);                 /* pin task to core 1 */
 }
 void loop() {}
 
@@ -327,25 +331,25 @@ void sendUDSRequest(uint16_t CANId, uint16_t PID) {
   ESP32Can.writeFrame(obdFrame);  // timeout defaults to 1 ms
 }
 
-void sendUDSMultiRequest(uint16_t CANId, uint16_t PID) {
-  Serial.print("UDS Request Sent To: 0x");
-  Serial.print(CANId, HEX);
-  Serial.print(" For PID: 0x");
-  Serial.println(PID, HEX);
-  CanFrame obdFrame = { 0 };
-  uint8_t lower = PID & 0xff;
-  uint8_t upper = (PID >> 8) & 0xff;
-  obdFrame.identifier = CANId;  // Default OBD2 address;
-  obdFrame.extd = 0;
-  obdFrame.data_length_code = 8;
-  obdFrame.data[0] = 0x04;
-  obdFrame.data[1] = 0x2A;
-  obdFrame.data[2] = 0x03;
-  obdFrame.data[3] = upper;  // Best use 0xAA (0b10101010) instead of 0
-  obdFrame.data[4] = lower;  // TWAI / CAN works better this way, as it
-  obdFrame.data[5] = 0xAA;   // needs to avoid bit-stuffing
-  obdFrame.data[6] = 0xAA;
-  obdFrame.data[7] = 0xAA;
-  // Accepts both pointers and references
-  ESP32Can.writeFrame(obdFrame);  // timeout defaults to 1 ms
-}
+// void sendUDSMultiRequest(uint16_t CANId, uint16_t PID) {
+//   Serial.print("UDS Request Sent To: 0x");
+//   Serial.print(CANId, HEX);
+//   Serial.print(" For PID: 0x");
+//   Serial.println(PID, HEX);
+//   CanFrame obdFrame = { 0 };
+//   uint8_t lower = PID & 0xff;
+//   uint8_t upper = (PID >> 8) & 0xff;
+//   obdFrame.identifier = CANId;  // Default OBD2 address;
+//   obdFrame.extd = 0;
+//   obdFrame.data_length_code = 8;
+//   obdFrame.data[0] = 0x04;
+//   obdFrame.data[1] = 0x2A;
+//   obdFrame.data[2] = 0x03;
+//   obdFrame.data[3] = upper;  // Best use 0xAA (0b10101010) instead of 0
+//   obdFrame.data[4] = lower;  // TWAI / CAN works better this way, as it
+//   obdFrame.data[5] = 0xAA;   // needs to avoid bit-stuffing
+//   obdFrame.data[6] = 0xAA;
+//   obdFrame.data[7] = 0xAA;
+//   // Accepts both pointers and references
+//   ESP32Can.writeFrame(obdFrame);  // timeout defaults to 1 ms
+// }

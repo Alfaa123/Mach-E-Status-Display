@@ -1124,10 +1124,10 @@
             {
               "objID": "90a006f7-a551-442a-c942-110dc91204ef",
               "type": "LVGLLabelWidget",
-              "left": 217,
-              "top": 86,
-              "width": 46,
-              "height": 24,
+              "left": 0,
+              "top": -144,
+              "width": 62,
+              "height": 22,
               "customInputs": [],
               "customOutputs": [],
               "style": {
@@ -1158,7 +1158,8 @@
                 "definition": {
                   "MAIN": {
                     "DEFAULT": {
-                      "text_font": "MONTSERRAT_22"
+                      "text_font": "MONTSERRAT_20",
+                      "align": "CENTER"
                     }
                   }
                 }
@@ -1169,7 +1170,7 @@
               "textType": "expression",
               "longMode": "WRAP",
               "recolor": false,
-              "previewValue": "100f"
+              "previewValue": "100.0 f"
             },
             {
               "objID": "cc9c4cc4-802b-4081-a525-bc083ad7e027",
@@ -2085,8 +2086,8 @@
             {
               "objID": "34c7d344-1403-4cbc-f757-89e5f4d30835",
               "type": "LVGLLabelWidget",
-              "left": 120,
-              "top": 87,
+              "left": -91,
+              "top": -143,
               "width": 58,
               "height": 18,
               "customInputs": [],
@@ -2120,7 +2121,8 @@
                   "MAIN": {
                     "DEFAULT": {
                       "text_font": "MONTSERRAT_16",
-                      "text_align": "CENTER"
+                      "text_align": "CENTER",
+                      "align": "CENTER"
                     }
                   }
                 }
@@ -2178,7 +2180,7 @@
               },
               "group": "",
               "groupIndex": 0,
-              "text": "Battery_Current",
+              "text": "Battery_Voltage",
               "textType": "expression",
               "longMode": "WRAP",
               "recolor": false,

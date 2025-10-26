@@ -34,7 +34,7 @@ void updateBatteryLevel(CanFrame frame) {
 void updateHVBTemp(CanFrame frame) {
   float batTemp = (frame.data[4] - 50) * 1.8 + 32;
   char buffer[8];
-  sprintf(buffer, "%.1f °f", batTemp);
+  sprintf(buffer, "%.1f f", batTemp);
   set_var_hvb_temp(buffer);
 }
 
@@ -68,22 +68,22 @@ void updateHVBThermalMode(CanFrame frame) {
 void updatePrimaryMotortemp(CanFrame frame) {
   float primaryMotortemp = (int8_t(frame.data[4]) * 256 + frame.data[5]) * 1.8+32;
   char buffer[10];
-  sprintf(buffer, "%.1f °f", primaryMotortemp);
+  sprintf(buffer, "%.1f f", primaryMotortemp);
   set_var_primary_motor_temp(buffer);
 }
 
 void updateSecondaryMotortemp(CanFrame frame) {
   float secondaryMotortemp = (int8_t(frame.data[4]) * 256 + frame.data[5])  * 1.8+32;
   char buffer[10];
-  sprintf(buffer, "%.1f °f", secondaryMotortemp);
+  sprintf(buffer, "%.1f f", secondaryMotortemp);
   set_var_secondary_motor_temp(buffer);
 }
 
 void updateCoolantHeaterPower(CanFrame frame){
-  int16_t coolantHeaterPower = (frame.data[4] << 8) | frame.data[5];
-  float coolantHeaterPowerFloat = coolantHeaterPower * 0.001;
+  float coolantHeaterPower = (int8_t(frame.data[4]) *256 + frame.data[5]) *0.001;
+  //float coolantHeaterPowerFloat = coolantHeaterPower * 0.001;
   char buffer[9];
-  sprintf(buffer, "%.3f kW", coolantHeaterPower);
+  sprintf(buffer, "%.2f kW", coolantHeaterPower);
   set_var_coolant_heater_power(buffer);
 }
 
@@ -115,12 +115,11 @@ void updateCoolantHeaterMode(CanFrame frame){
 }
 
 void updateBatteryVoltage(CanFrame frame){
-  int16_t batVoltage = (frame.data[4] << 8) | frame.data[5];
-  float batVoltageFloat = batVoltage *0.01;
+  float batVoltage = ((frame.data[4] *256) + frame.data[5]) *0.01;
+  //float batVoltageFloat = batVoltage *0.01;
   char buffer[8];
-  sprintf(buffer, "%.2f v", batVoltageFloat);
+  sprintf(buffer, "%.2f ", batVoltage);
   set_var_battery_voltage(buffer);
-
 }
 
 void updateBatteryCurrent(CanFrame frame){
@@ -134,14 +133,14 @@ void updateBatteryCurrent(CanFrame frame){
 void updateInteriorTemp(CanFrame frame){
   float interiorTemp = (frame.data[4] - 40) * 1.8 + 32;
   char buffer[8];
-  sprintf(buffer, "%.1f °f", interiorTemp);
+  sprintf(buffer, "%.1f f", interiorTemp);
   set_var_interior_temperature(buffer);
 }
 
 void updateHeaterLoopTemp(CanFrame frame){
-  float heaterLoopTemp = (int8_t(frame.data[4]) * 256 + frame.data[5])  * 1.8+32;
+  float heaterLoopTemp = frame.data[6] - 50;
   char buffer[10];
-  sprintf(buffer, "%.1f °f", heaterLoopTemp);
+  sprintf(buffer, "%.1f c", heaterLoopTemp);
   set_var_heater_loop_temp(buffer);
 }
 

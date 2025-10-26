@@ -73,7 +73,7 @@
           },
           {
             "type": "border",
-            "selected": 0,
+            "selected": 1,
             "location": "bottom",
             "children": [
               {
@@ -184,7 +184,8 @@
                       "enableClose": false,
                       "icon": "svg:variable"
                     }
-                  ]
+                  ],
+                  "active": true
                 }
               ]
             },
@@ -206,8 +207,7 @@
                   },
                   "icon": "svg:page"
                 }
-              ],
-              "active": true
+              ]
             },
             {
               "type": "row",
@@ -998,6 +998,9 @@
             "1": {},
             "2": {},
             "3": {}
+          },
+          "27": {
+            "$selected": true
           }
         }
       },
