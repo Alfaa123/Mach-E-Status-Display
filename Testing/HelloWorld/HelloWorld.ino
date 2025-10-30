@@ -64,7 +64,8 @@ Arduino_ESP32RGBPanel *rgbpanel = new Arduino_ESP32RGBPanel(
   14 /* G0 */, 13 /* G1 */, 12 /* G2 */, 11 /* G3 */, 10 /* G4 */, 9 /* G5 */,
   5 /* B0 */, 45 /* B1 */, 48 /* B2 */, 47 /* B3 */, 21 /* B4 */,
   1 /* hsync_polarity */, 10 /* hsync_front_porch */, 8 /* hsync_pulse_width */, 50 /* hsync_back_porch */,
-  1 /* vsync_polarity */, 10 /* vsync_front_porch */, 8 /* vsync_pulse_width */, 20 /* vsync_back_porch */);
+  1 /* vsync_polarity */, 10 /* vsync_front_porch */, 8 /* vsync_pulse_width */, 20 /* vsync_back_porch */, 1 /* pclk_active_neg */, 13000000 /* prefer_speed */,
+    0 /* de_idle_high */, 0 /* pclk_idle_high */);
 Arduino_RGB_Display *gfx = new Arduino_RGB_Display(
   480 /* width */, 480 /* height */, rgbpanel, 0 /* rotation */, true /* auto_flush */,
   bus, GFX_NOT_DEFINED /* RST */, st7701_type1_init_operations, sizeof(st7701_type1_init_operations));
@@ -72,17 +73,28 @@ Arduino_RGB_Display *gfx = new Arduino_RGB_Display(
  * End of Arduino_GFX setting
  ******************************************************************************/
 
+static portMUX_TYPE displayFlush_spinlock = portMUX_INITIALIZER_UNLOCKED;
+
+static portMUX_TYPE CAN_spinlock = portMUX_INITIALIZER_UNLOCKED;
+
+//SemaphoreHandle_t CANMutex = NULL;
+
+
 void my_disp_flush(lv_display_t *disp, const lv_area_t *area, uint8_t *px_map) {
   //uint32_t w = lv_area_get_width(area);
   //uint32_t h = lv_area_get_height(area);
 
   //gfx->draw16bitRGBBitmap(area->x1, area->y1, (uint16_t *)px_map, w, h);
+  taskENTER_CRITICAL(&displayFlush_spinlock);
   gfx->draw16bitRGBBitmap(0, 0, (uint16_t *)px_map, 480, 480);
+  taskEXIT_CRITICAL(&displayFlush_spinlock);
   /*Call it to tell LVGL you are ready*/
   lv_disp_flush_ready(disp);
 }
 
 void DisplayLoop(void *pvParameters) {
+    Serial.print("Displau Loop started on core ");
+  Serial.println(xPortGetCoreID());
   for (;;) {
     lv_task_handler();
     gfx->flush();
@@ -164,47 +176,45 @@ void PeriodicRequestsFullSpeed(void *pvParameters) {
   Serial.print("Periodic Full Speed CAN requests started on core ");
   Serial.println(xPortGetCoreID());
   for (;;) {
-
+        //Battery Current
+    sendUDSRequest(0x7E4, 0x48f9);
+    delay(200);
   }
 }
 
 void PeriodicRequests1s(void *pvParameters) {
+    if (ESP32Can.begin(ESP32Can.convertSpeed(500), CAN_TX, CAN_RX, 10, 10)) {
+    Serial.println("CAN bus started!");
+  } else {
+    Serial.println("CAN bus failed!");
+  }
   Serial.print("Periodic 1s CAN requests started on core ");
   Serial.println(xPortGetCoreID());
   for (;;) {
     //HVB Thermal Mode
     sendUDSRequest(0x7E6, 0x48e0);
-    delay(300);
     //Battery SoC
     sendUDSRequest(0x7E4, 0x4801);
+    //Interior Temperature
+    sendUDSRequest(0x7E2, 0xDD04);
     delay(300);
-    // //HVB Temp
+    //HVB Temp
     sendUDSRequest(0x7E4, 0x4800);
-    delay(300);
-     //Primary Motor temp
-     sendUDSRequest(0x7E6, 0x481f);
-    delay(300);
+    //Primary Motor temp
+    sendUDSRequest(0x7E6, 0x481f);
     //Secondary Motor temp
     sendUDSRequest(0x7E7, 0x4820);
-    delay(300);
     //Heater Loop Temp
     sendUDSRequest(0x7E0, 0xF467);
     delay(300);
     //Coolant Heater Power
     sendUDSRequest(0x7E6, 0x48de);
+    //Battery Voltage
+    sendUDSRequest(0x7E4, 0x480D);
     delay(300);
     //Coolant Heater Mode
     sendUDSRequest(0x7E6, 0x48df);
     delay(300);
-    //Interior Temperature
-    sendUDSRequest(0x7E2, 0xDD04);
-    delay(300);
-    //Battery Voltage
-    sendUDSRequest(0x7E4, 0x480D);
-    delay(300);
-    //Battery Current
-    sendUDSRequest(0x7E4, 0x48f9);
-    delay(120);
   }
 }
 
@@ -215,12 +225,6 @@ void setup(void) {
   Serial.print("Setup started on core ");
   Serial.println(xPortGetCoreID());
 
-  if (ESP32Can.begin(ESP32Can.convertSpeed(500), CAN_TX, CAN_RX, 10, 10)) {
-    Serial.println("CAN bus started!");
-  } else {
-    Serial.println("CAN bus failed!");
-  }
-
   if (Wire.begin(15, 7)) {
     Serial.println("I2C Bus Started!");
   } else {
@@ -230,64 +234,20 @@ void setup(void) {
   TCA.begin();
 
   Wire.setClock(50000);
-
-#ifdef DEV_DEVICE_INIT
-  DEV_DEVICE_INIT();
-#endif
-
- xTaskCreatePinnedToCore(
-    PeriodicRequests1s,   /* Task function. */
-    "PeriodicRequests1s", /* name of task. */
-    10000,                /* Stack size of task */
-    NULL,                 /* parameter of the task */
-    1,                    /* priority of the task */
-    NULL,                 /* Task handle to keep track of created task */
-    0);                   /* pin task to core 0 */
-
-  // xTaskCreatePinnedToCore(
-  //   PeriodicRequestsFullSpeed,   /* Task function. */
-  //   "PeriodicRequestsFullSpeed", /* name of task. */
-  //   10000,                       /* Stack size of task */
-  //   NULL,                        /* parameter of the task */
-  //   2,                           /* priority of the task */
-  //   NULL,                        /* Task handle to keep track of created task */
-  //   0);                          /* pin task to core 0 */
-
-  xTaskCreatePinnedToCore(
-    MessageHandler,        /* Task function. */
-    "MessageHandler",      /* name of task. */
-    100000,                 /* Stack size of task */
-    NULL,                  /* parameter of the task */
-    3,                     /* priority of the task */
-    NULL, /* Task handle to keep track of created task */
-    0);
-
-
-  // Init Display
+    // Init Display
   if (gfx->begin()) {
     Serial.println("LCD Started!");
   } else {
     Serial.println("LCD Failed!");
   }
   gfx->fillScreen(RGB565_BLACK);
-
-#ifdef GFX_BL
-  TCA.pinMode1(GFX_BL, OUTPUT);
-  TCA.write1(GFX_BL, HIGH);
-#endif
-
   lv_init();
   lv_tick_set_cb(millis);
   Serial.println("LVGL Started");
-
-
   screenWidth = gfx->width();
   screenHeight = gfx->height();
-
   bufSize = screenWidth * screenHeight;
-
   disp_draw_buf = (lv_color_t *)gfx->getFramebuffer();
-
   if (!disp_draw_buf) {
     Serial.println("LVGL disp_draw_buf allocate failed!");
   } else {
@@ -297,18 +257,52 @@ void setup(void) {
   }
   ui_init();
   Serial.println("UI Started");
+
+ xTaskCreatePinnedToCore(
+    PeriodicRequests1s,   /* Task function. */
+    "PeriodicRequests1s", /* name of task. */
+    2000,                /* Stack size of task */
+    NULL,                 /* parameter of the task */
+    1,                    /* priority of the task */
+    NULL,                 /* Task handle to keep track of created task */
+    1);                   /* pin task to core 0 */
+
   xTaskCreatePinnedToCore(
+    PeriodicRequestsFullSpeed,   /* Task function. */
+    "PeriodicRequestsFullSpeed", /* name of task. */
+    2000,                       /* Stack size of task */
+    NULL,                        /* parameter of the task */
+    2,                           /* priority of the task */
+    NULL,                        /* Task handle to keep track of created task */
+    1);                          /* pin task to core 0 */
+
+  xTaskCreatePinnedToCore(
+    MessageHandler,        /* Task function. */
+    "MessageHandler",      /* name of task. */
+    5000,                 /* Stack size of task */
+    NULL,                  /* parameter of the task */
+    3,                     /* priority of the task */
+    NULL, /* Task handle to keep track of created task */
+    1);
+
+
+#ifdef GFX_BL
+  TCA.pinMode1(GFX_BL, OUTPUT);
+  TCA.write1(GFX_BL, HIGH);
+#endif
+xTaskCreatePinnedToCore(
     DisplayLoop,        /* Task function. */
     "DisplayLoop",      /* name of task. */
-    50000,              /* Stack size of task */
+    100000,              /* Stack size of task */
     NULL,               /* parameter of the task */
     4,                  /* priority of the task */
     &DisplayLoopHandle, /* Task handle to keep track of created task */
-    1);                 /* pin task to core 1 */
+    0);                 /* pin task to core 1 */
 }
 void loop() {}
 
 void sendUDSRequest(uint16_t CANId, uint16_t PID) {
+  
   Serial.print("UDS Request Sent To: 0x");
   Serial.print(CANId, HEX);
   Serial.print(" For PID: 0x");
@@ -328,7 +322,9 @@ void sendUDSRequest(uint16_t CANId, uint16_t PID) {
   obdFrame.data[6] = 0xAA;
   obdFrame.data[7] = 0xAA;
   // Accepts both pointers and references
+  taskENTER_CRITICAL(&CAN_spinlock);
   ESP32Can.writeFrame(obdFrame);  // timeout defaults to 1 ms
+  taskEXIT_CRITICAL(&CAN_spinlock);
 }
 
 // void sendUDSMultiRequest(uint16_t CANId, uint16_t PID) {

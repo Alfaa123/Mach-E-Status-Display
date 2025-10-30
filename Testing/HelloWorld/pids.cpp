@@ -138,9 +138,9 @@ void updateInteriorTemp(CanFrame frame){
 }
 
 void updateHeaterLoopTemp(CanFrame frame){
-  float heaterLoopTemp = frame.data[6] - 50;
+  float heaterLoopTemp = (frame.data[6] - 40) * 1.8 + 32;
   char buffer[10];
-  sprintf(buffer, "%.1f c", heaterLoopTemp);
+  sprintf(buffer, "%.1f f", heaterLoopTemp);
   set_var_heater_loop_temp(buffer);
 }
 
