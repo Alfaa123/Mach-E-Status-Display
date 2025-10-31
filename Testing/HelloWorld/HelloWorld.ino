@@ -73,11 +73,7 @@ Arduino_RGB_Display *gfx = new Arduino_RGB_Display(
  * End of Arduino_GFX setting
  ******************************************************************************/
 
-static portMUX_TYPE displayFlush_spinlock = portMUX_INITIALIZER_UNLOCKED;
-
 static portMUX_TYPE CAN_spinlock = portMUX_INITIALIZER_UNLOCKED;
-
-//SemaphoreHandle_t CANMutex = NULL;
 
 
 void my_disp_flush(lv_display_t *disp, const lv_area_t *area, uint8_t *px_map) {
@@ -85,20 +81,21 @@ void my_disp_flush(lv_display_t *disp, const lv_area_t *area, uint8_t *px_map) {
   //uint32_t h = lv_area_get_height(area);
 
   //gfx->draw16bitRGBBitmap(area->x1, area->y1, (uint16_t *)px_map, w, h);
-  taskENTER_CRITICAL(&displayFlush_spinlock);
-  gfx->draw16bitRGBBitmap(0, 0, (uint16_t *)px_map, 480, 480);
-  taskEXIT_CRITICAL(&displayFlush_spinlock);
+  //taskENTER_CRITICAL(&displayFlush_spinlock);
+  //gfx->draw16bitRGBBitmap(0, 0, (uint16_t *)disp_draw_buf, 480, 480);
+  //taskEXIT_CRITICAL(&displayFlush_spinlock);
   /*Call it to tell LVGL you are ready*/
   lv_disp_flush_ready(disp);
 }
 
 void DisplayLoop(void *pvParameters) {
-    Serial.print("Displau Loop started on core ");
+    Serial.print("Display Loop started on core ");
   Serial.println(xPortGetCoreID());
   for (;;) {
-    lv_task_handler();
-    gfx->flush();
     ui_tick();
+    lv_task_handler();
+    gfx->draw16bitRGBBitmap(0, 0, (uint16_t *)disp_draw_buf, 480, 480);
+    //gfx->flush();
     delay(5);
   }
 }
@@ -247,7 +244,8 @@ void setup(void) {
   screenWidth = gfx->width();
   screenHeight = gfx->height();
   bufSize = screenWidth * screenHeight;
-  disp_draw_buf = (lv_color_t *)gfx->getFramebuffer();
+  //disp_draw_buf = (lv_color_t *)gfx->getFramebuffer();
+  disp_draw_buf = (lv_color_t *)heap_caps_malloc(bufSize * 2, MALLOC_CAP_8BIT);
   if (!disp_draw_buf) {
     Serial.println("LVGL disp_draw_buf allocate failed!");
   } else {
@@ -295,11 +293,12 @@ xTaskCreatePinnedToCore(
     "DisplayLoop",      /* name of task. */
     100000,              /* Stack size of task */
     NULL,               /* parameter of the task */
-    4,                  /* priority of the task */
+    5,                  /* priority of the task */
     &DisplayLoopHandle, /* Task handle to keep track of created task */
-    0);                 /* pin task to core 1 */
+    0);                 /* pin task to core 0 */
 }
-void loop() {}
+void loop() {
+}
 
 void sendUDSRequest(uint16_t CANId, uint16_t PID) {
   
